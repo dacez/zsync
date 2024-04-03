@@ -1,5 +1,5 @@
-#ifndef z_BINLOG_H
-#define z_BINLOG_H
+#ifndef z_BINLOGFILE_H
+#define z_BINLOGFILE_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -14,37 +14,29 @@
 #include "record.h"
 
 typedef struct {
+  uint64_t Seq;
   uint64_t MaxSize;
   uint64_t CurSize;
-  pthread_mutex_t Mnt;
   FILE *File;
 } z_BinLogFileWriter;
 
-z_BinLogFileWriter *z_BinLogFileWriterNew(char *path, uint64_t max_size) {
+z_BinLogFileWriter *z_BinLogFileWriterNew(char *path, uint64_t max_size, uint64_t seq) {
   z_BinLogFileWriter *wr = malloc(sizeof(z_BinLogFileWriter));
+  wr->Seq = seq;
   wr->MaxSize = max_size;
   wr->CurSize = 0;
-  int ret = pthread_mutex_init(&wr->Mnt, nullptr);
-  if (ret != 0) {
-    z_panic("pthread_mutex_init");
-  }
 
   wr->File = fopen(path, "a");
   if (wr->File == nullptr) {
-    z_panic("fopen %s", path);
+    z_error("fopen %s", path);
   }
   return wr;
 }
 
 void z_BinLogFileWriterFree(z_BinLogFileWriter *wr) {
-  int ret = pthread_mutex_destroy(&wr->Mnt);
+  int ret = fclose(wr->File);
   if (ret != 0) {
-    z_panic("pthread_mutex_destroy");
-  }
-
-  ret = fclose(wr->File);
-  if (ret != 0) {
-    z_panic("fclose");
+    z_error("fclose");
   }
 
   free(wr);
@@ -53,11 +45,6 @@ void z_BinLogFileWriterFree(z_BinLogFileWriter *wr) {
 z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, uint8_t *data,
                                 uint64_t len) {
   z_Error ret = z_OK;
-  if (pthread_mutex_lock(&wr->Mnt) != 0) {
-    z_error("pthread_mutex_lock");
-    return z_ERR_SYS;
-  }
-
   if (wr->CurSize + len < wr->MaxSize) {
     if (fwrite(data, sizeof(uint8_t), len, wr->File) != len) {
       z_error("fwrite");
@@ -68,16 +55,11 @@ z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, uint8_t *data,
     z_error("nospace current:%llu len:%llu max:%llu", wr->CurSize, len, wr->MaxSize);
     ret = z_ERR_NOSPACE;
   }
-
-  if (pthread_mutex_unlock(&wr->Mnt) != 0) {
-    z_error("pthread_mutex_lock");
-    return z_ERR_SYS;
-  }
-
   return ret;
 }
 
 z_Error z_BinLogFileWriterAppendRecord(z_BinLogFileWriter *wr, z_Record *r) {
+  r->Seq = wr->Seq++;
   return z_BinLogFileWriterWrite(wr, (uint8_t*)r, z_RecordLen(r));
 }
 

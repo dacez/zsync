@@ -46,9 +46,9 @@ z_Error z_RecordValue(z_Record *r, z_String *value) {
 }
 
 z_Error z_RecordCheck(z_Record *r) {
-  uint16_t sum = r->Sum;
+  uint8_t sum = r->Sum;
   r->Sum = 0;
-  uint16_t s = z_checksum((uint8_t*)r, z_RecordLen(r));
+  uint8_t s = z_Checksum((uint8_t*)r, z_RecordLen(r));
   r->Sum = sum;
   
   if (s == sum) {
@@ -60,7 +60,7 @@ z_Error z_RecordCheck(z_Record *r) {
 
 void z_RecordSum(z_Record *r) {
   r->Sum = 0;
-  uint16_t s = z_checksum((uint8_t*)r, z_RecordLen(r));
+  uint8_t s = z_Checksum((uint8_t*)r, z_RecordLen(r));
   r->Sum = s;
 
   return;
