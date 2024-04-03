@@ -10,21 +10,24 @@
 
 #include "zlog/log.h"
 #include "ztypes/types.h"
+#include "zutils/utils.h"
 
-#include "record.h"
+#include "zbinlog/record.h"
 
 typedef struct {
-  uint64_t Seq;
   uint64_t MaxSize;
   uint64_t CurSize;
+  uint64_t SyncNS;
+  uint64_t SyncIntervalNS;
   FILE *File;
 } z_BinLogFileWriter;
 
-z_BinLogFileWriter *z_BinLogFileWriterNew(char *path, uint64_t max_size, uint64_t seq) {
+z_BinLogFileWriter *z_BinLogFileWriterNew(char *path, uint64_t max_size, uint64_t sync_interval_ms) {
   z_BinLogFileWriter *wr = malloc(sizeof(z_BinLogFileWriter));
-  wr->Seq = seq;
   wr->MaxSize = max_size;
   wr->CurSize = 0;
+  wr->SyncNS = z_NowNS();
+  wr->SyncIntervalNS = sync_interval_ms * 1000000;
 
   wr->File = fopen(path, "a");
   if (wr->File == nullptr) {
@@ -51,6 +54,12 @@ z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, uint8_t *data,
       ret = z_ERR_SYS;
     }
     wr->CurSize += len;
+    if (z_NowNS() - wr->SyncNS > wr->SyncIntervalNS) {
+      if (fflush(wr->File) != 0) {
+        z_error("fflush");
+      }
+      wr->SyncNS = z_NowNS();
+    }
   } else {
     z_error("nospace current:%llu len:%llu max:%llu", wr->CurSize, len, wr->MaxSize);
     ret = z_ERR_NOSPACE;
@@ -59,7 +68,6 @@ z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, uint8_t *data,
 }
 
 z_Error z_BinLogFileWriterAppendRecord(z_BinLogFileWriter *wr, z_Record *r) {
-  r->Seq = wr->Seq++;
   return z_BinLogFileWriterWrite(wr, (uint8_t*)r, z_RecordLen(r));
 }
 

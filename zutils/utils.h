@@ -5,11 +5,22 @@
 
 #include <time.h>
 
-uint64_t z_Now() {
+uint64_t z_NowNS() {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return ts.tv_sec * 1000000000 + ts.tv_nsec;
 }
+
+// Millis
+uint64_t z_NowMS() {
+    return z_NowNS() / 1000000;
+}
+
+uint64_t z_NowS() {
+    return z_NowNS() / 1000000000;
+}
+
+
 
 void z_LocalTime(char local[32]) {
     time_t now = time(NULL);
