@@ -7,6 +7,7 @@
 
 #include "ztypes/types.h"
 #include "zhash/hash.h"
+#include "zutils/utils.h"
 
 typedef struct {
   uint64_t Seq;
@@ -69,7 +70,7 @@ void z_RecordSum(z_Record *r) {
 z_Record *z_RecordNew(uint64_t seq, uint8_t op, z_String key, z_String val) {
   z_Record record = {.Seq = seq, .OP = op, .KeyLen = key.Len, .ValLen = val.Len};
   uint64_t len = z_RecordLen(&record);
-  z_Record *ret_record = (z_Record *)malloc(len);
+  z_Record *ret_record = z_malloc(len);
   *ret_record = record;
   memcpy(ret_record+1, key.Data, key.Len);
   memcpy((uint8_t*)(ret_record+1) + key.Len, val.Data, val.Len);

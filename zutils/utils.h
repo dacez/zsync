@@ -2,6 +2,7 @@
 #define z_UTILS_H
 
 #include <stdint.h>
+#include <string.h>
 
 #include <time.h>
 
@@ -27,5 +28,8 @@ void z_LocalTime(char local[32]) {
     struct tm *lt = localtime(&now);
     strftime(local, 32, "%Y/%m/%d %H:%M:%S", lt);
 }
+
+#define z_malloc(s) malloc(s)
+#define z_free(ptr) free(ptr)
 
 #endif
