@@ -64,9 +64,15 @@
     char log_str[z_LOG_LEN] = {};                                              \
     char tail_str[z_LOG_TAIL_LEN] = {};                                        \
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
-    snprintf(log_str, sizeof(log_str),                                         \
-             z_color_pink "%s [error] %s:%d:%s\n" z_color_end, time_str,       \
-             __FILE__, __LINE__, tail_str);                                    \
+    if (errno != 0) {                                                          \
+      snprintf(log_str, sizeof(log_str),                                       \
+               z_color_pink "%s [error] %s:%d:%s:%s\n" z_color_end, time_str,  \
+               __FILE__, __LINE__, tail_str, strerror(errno));                 \
+    } else {                                                                   \
+      snprintf(log_str, sizeof(log_str),                                       \
+               z_color_pink "%s [error] %s:%d:%s\n" z_color_end, time_str,     \
+               __FILE__, __LINE__, tail_str);                                  \
+    }                                                                          \
     fprintf(stdout, "%s", log_str);                                            \
   }
 
@@ -79,15 +85,14 @@
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
     if (errno != 0) {                                                          \
       snprintf(log_str, sizeof(log_str),                                       \
-               z_color_red "%s [panic] %s:%d:%s:%s exit\n" z_color_end, time_str,   \
-               __FILE__, __LINE__, tail_str, strerror(errno));                 \
-      fprintf(stdout, "%s", log_str);                                          \
+               z_color_red "%s [panic] %s:%d:%s:%s exit\n" z_color_end,        \
+               time_str, __FILE__, __LINE__, tail_str, strerror(errno));       \
     } else {                                                                   \
       snprintf(log_str, sizeof(log_str),                                       \
-               z_color_red "%s [panic] %s:%d:%s exit\n" z_color_end, time_str,     \
+               z_color_red "%s [panic] %s:%d:%s exit\n" z_color_end, time_str, \
                __FILE__, __LINE__, tail_str);                                  \
-      fprintf(stdout, "%s", log_str);                                          \
     }                                                                          \
+    fprintf(stdout, "%s", log_str);                                            \
     exit(EXIT_FAILURE);                                                        \
   }
 

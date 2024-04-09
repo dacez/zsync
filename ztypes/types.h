@@ -16,6 +16,7 @@ typedef enum {
   z_ERR_SYS = 3,
   z_ERR_EXIST = 4,
   z_ERR_NEED_CHECK = 5,
+  z_ERR_NOT_FOUND = 6,
 } z_Error;
 
 #endif

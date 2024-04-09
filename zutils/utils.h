@@ -6,6 +6,8 @@
 
 #include <time.h>
 
+#include <zutils/utils.h>
+
 uint64_t z_NowNS() {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -29,7 +31,7 @@ void z_LocalTime(char local[32]) {
     strftime(local, 32, "%Y/%m/%d %H:%M:%S", lt);
 }
 
-#define z_malloc(s) malloc(s)
-#define z_free(ptr) free(ptr)
+#define z_malloc(s) malloc(s);
+#define z_free(ptr) {if (ptr == nullptr) {z_panic("ptr == nullptr");}free(ptr);}
 
 #endif
