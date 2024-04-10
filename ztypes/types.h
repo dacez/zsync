@@ -8,6 +8,7 @@ typedef struct {
   uint64_t Len;
 } z_String;
 
+#define z_CStr(z_str, cstr) memset(cstr, 0, sizeof(cstr));memcpy(cstr, z_str.Data, z_str.Len < sizeof(cstr) - 1 ? z_str.Len : sizeof(cstr) - 1);
 
 typedef enum {
   z_OK = 0,
@@ -15,8 +16,8 @@ typedef enum {
   z_ERR_NOSPACE = 2,
   z_ERR_SYS = 3,
   z_ERR_EXIST = 4,
-  z_ERR_NEED_CHECK = 5,
-  z_ERR_NOT_FOUND = 6,
+  z_ERR_NOT_FOUND = 5,
+  z_ERR_CONFLICT = 6,
 } z_Error;
 
 #endif

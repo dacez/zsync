@@ -23,8 +23,6 @@ uint64_t z_NowS() {
     return z_NowNS() / 1000000000;
 }
 
-
-
 void z_LocalTime(char local[32]) {
     time_t now = time(NULL);
     struct tm *lt = localtime(&now);
