@@ -1,7 +1,7 @@
 #ifndef z_TEST_H
 #define z_TEST_H
 
-#include "zlog/log.h"
+#include <stdio.h>
 
 #define z_ASSERT(e)                                                            \
   {                                                                            \

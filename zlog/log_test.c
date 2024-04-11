@@ -6,4 +6,5 @@ int main() {
   z_warning("warning %d", 3);
   z_error("error %d", 4);
   z_panic("panic %d", 5);
+  return 1;
 }

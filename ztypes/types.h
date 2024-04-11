@@ -4,11 +4,19 @@
 #include <stdint.h>
 
 typedef struct {
-  uint8_t *Data;
-  uint64_t Len;
+  int8_t *Data;
+  int64_t Len;
 } z_String;
 
 #define z_CStr(z_str, cstr) memset(cstr, 0, sizeof(cstr));memcpy(cstr, z_str.Data, z_str.Len < sizeof(cstr) - 1 ? z_str.Len : sizeof(cstr) - 1);
+
+bool z_StringIsEqual(z_String a, z_String b) {
+  if (a.Len != b.Len) {
+    return false;
+  }
+
+  return memcmp(a.Data, b.Data, a.Len) == 0;
+}
 
 typedef enum {
   z_OK = 0,
