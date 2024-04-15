@@ -3,10 +3,11 @@
 
 #include <pthread.h>
 
+#include "zerror/error.h"
+#include "zutils/utils.h"
+
 #include "zbinlog/binlogfile.h"
-#include "zbinlog/record.h"
-#include "ztypes/types.h"
-#include "zlog/log.h"
+
 
 typedef z_Error z_BinLogAfterWrite(void *, z_Record *, int64_t);
 

@@ -1,8 +1,8 @@
 #include <string.h>
 
-#include "zutils/utils.h"
-#include "zlog/log.h"
 #include "ztest/test.h"
+
+#include "zutils/utils.h"
 
 void z_UtilsTest() {
   z_CHECK(z_NowMS() > 0 && z_NowNS() > 0 && z_NowS > 0);

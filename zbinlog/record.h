@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ztypes/types.h"
-#include "zhash/hash.h"
+#include "zerror/error.h"
 #include "zutils/utils.h"
-#include "zlog/log.h"
+
+#include "zhash/hash.h"
 
 typedef enum {
   z_RECORD_OP_INSERT = 1,
@@ -31,10 +31,10 @@ int64_t z_RecordLen(z_Record *r) {
     z_error("r == nullptr");
     return 0;
   }
-  return r->KeyLen + r->ValLen + sizeof(z_Record);
+  return (int64_t)r->KeyLen + (int64_t)r->ValLen + (int64_t)sizeof(z_Record);
 }
 
-z_Error z_RecordKey(z_Record *r, z_String *key) {
+z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
   if (r == nullptr || r->KeyLen == 0 || key == nullptr) {
     z_error("r == nullptr || r->KeyLen == 0 || key == nullptr");
     return z_ERR_INVALID_DATA;
@@ -46,7 +46,7 @@ z_Error z_RecordKey(z_Record *r, z_String *key) {
   return z_OK;
 }
 
-z_Error z_RecordValue(z_Record *r, z_String *value) {
+z_Error z_RecordValue(z_Record *r, z_Buffer *value) {
   if (r == nullptr || r->KeyLen == 0 || value == nullptr) {
     z_error("r == nullptr || r->KeyLen == 0 || value == nullptr");
     return z_ERR_INVALID_DATA;
@@ -91,7 +91,7 @@ void z_RecordSum(z_Record *r) {
 
 z_Record *z_RecordNewByLen(int64_t len) {
   if (len < sizeof(z_Record)) {
-    z_error("len %ll record_size %ll", len, sizeof(z_Record));
+    z_error("len %lld record_size %zu", len, sizeof(z_Record));
     return nullptr;
   }
 
@@ -102,7 +102,11 @@ z_Record *z_RecordNewByLen(int64_t len) {
   return r;
 }
 
-z_Record *z_RecordNew(int8_t op, z_String key, z_String val) {
+z_Record *z_RecordNew(int8_t op, z_Buffer key, z_Buffer val) {
+  if (key.Data == nullptr || key.Len == 0) {
+    z_error("key.Data == nullptr || key.Len == 0");
+    return nullptr;
+  }
   z_Record record = {.OP = op, .KeyLen = key.Len, .ValLen = val.Len};
   int64_t len = z_RecordLen(&record);
   z_Record *ret_record = z_RecordNewByLen(len);

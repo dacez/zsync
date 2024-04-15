@@ -1,3 +1,5 @@
+#include "ztest/test.h"
+
 #include "zbinlog/record_test.h"
 #include "zutils/utils_test.h"
 

@@ -1,4 +1,4 @@
-#include "log.h"
+#include "zutils/log.h"
 
 int main() {
   z_debug("debug %d", 1);

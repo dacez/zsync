@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ztypes/types.h"
-#include "zutils/utils.h"
+#include "zerror/error.h"
+#include "zutils/time.h"
 
 #define z_LOG_LEN 128
 #define z_LOG_TAIL_LEN 64

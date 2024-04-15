@@ -6,10 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <pthread.h>
-
-#include "zlog/log.h"
-#include "ztypes/types.h"
+#include "zerror/error.h"
 #include "zutils/utils.h"
 
 #include "zbinlog/record.h"
