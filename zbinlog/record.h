@@ -31,7 +31,7 @@ int64_t z_RecordLen(z_Record *r) {
     z_error("r == nullptr");
     return 0;
   }
-  return (int64_t)r->KeyLen + (int64_t)r->ValLen + (int64_t)sizeof(z_Record);
+  return r->KeyLen + r->ValLen + sizeof(z_Record);
 }
 
 z_Error z_RecordKey(z_Record *r, z_Buffer *key) {

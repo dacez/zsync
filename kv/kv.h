@@ -15,6 +15,11 @@ typedef struct {
 } z_KV;
 
 z_Error z_recordToMap(void *attr, z_Record *r, int64_t offset) {
+  if (attr == nullptr || r == nullptr) {
+    z_error("attr == nullptr || r == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
   z_Map *m = (z_Map *)attr;
   z_Error ret = z_OK;
   switch (r->OP) {
@@ -125,12 +130,10 @@ z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size, int64_t buc
   kv->BucketsLen = buckets_len;
   z_Error ret = z_BinLogInit(&kv->BinLog, kv->BinLogPath, kv->BinLogFileMaxSize, &kv->Map, z_recordToMap);
   if (ret != z_OK) {
-    z_error("z_BinLogInit %d", ret);
     return ret;
   }
   ret = z_MapInit(&kv->Map, kv->BucketsLen, &kv->BinLog, z_kvrIsEqual);
   if (ret != z_OK) {
-    z_error("z_MapInit %d", ret);
     return ret;
   }
 
@@ -138,7 +141,17 @@ z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size, int64_t buc
 }
 
 z_Error z_KVInsert(z_KV *kv, z_Buffer k, z_Buffer v) {
+  if (kv == nullptr) {
+    z_error("kv == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
   z_Record *r = z_RecordNew(z_RECORD_OP_INSERT, k, v);
+  if (r == nullptr) {
+    z_error("z_RecordNew == nullptr");
+    return z_ERR_NOSPACE;
+  }
+  
   z_Error ret = z_BinLogAppendRecord(&kv->BinLog, r);
   z_RecordFree(r);
 
@@ -151,12 +164,21 @@ z_Error z_KVInsert(z_KV *kv, z_Buffer k, z_Buffer v) {
 }
 
 z_Error z_KVUpdate(z_KV *kv, z_Buffer k, z_Buffer v, bool is_force) {
+  if (kv == nullptr) {
+    z_error("kv == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
   z_Record *r = z_RecordNew(is_force ? z_RECORD_OP_FORCE_UPDATE : z_RECORD_OP_UPDATE, k, v);
+  if (r == nullptr) {
+    z_error("z_RecordNew == nullptr");
+    return z_ERR_NOSPACE;
+  }
+
   z_Error ret = z_BinLogAppendRecord(&kv->BinLog, r);
   z_RecordFree(r);
 
   if (ret != z_OK) {
-    z_error("z_BinLogAppendRecord %d", ret);
     return ret;
   }
 
@@ -164,29 +186,26 @@ z_Error z_KVUpdate(z_KV *kv, z_Buffer k, z_Buffer v, bool is_force) {
 }
 
 z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
+  if (kv == nullptr || v == nullptr) {
+    z_error("kv == nullptr || v == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
   int64_t offset = 0;
   z_Error ret = z_MapFind(&kv->Map, k, &offset);
   if (ret != z_OK) {
-    z_error("z_MapFind %d", ret);
-    return ret;
-  }
-
-  if (ret != z_OK) {
-    z_error("z_BinLogAppendRecord %d", ret);
     return ret;
   }
 
   z_BinLogFileReader rd;
   ret = z_BinLogFileReaderInit(&rd, kv->BinLogPath);
   if (ret != z_OK) {
-    z_error("z_BinLogFileReaderInit %d", ret);
     return ret;    
   }
 
   z_Record *r;
   ret = z_BinLogFileReaderGetRecord(&rd, &r);
   if (ret != z_OK) {
-    z_error("z_BinLogFileReaderGetRecord %d", ret);
     z_BinLogFileReaderDestory(&rd);
     return ret;
   }
@@ -204,20 +223,25 @@ z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
 
   z_RecordFree(r);
   z_BinLogFileReaderDestory(&rd);
-  
+
   return ret;
 }
 
 z_Error z_KVDelete(z_KV *kv, z_Buffer k) {
-  z_Buffer v;
+  if (kv == nullptr) {
+    z_error("kv == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+ 
+  z_Buffer v = {};
   z_Record *r = z_RecordNew(z_RECORD_OP_DELETE, k, v);
+  if (r == nullptr) {
+    z_error("z_RecordNew == nullptr");
+    return z_ERR_NOSPACE;
+  }
+
   z_Error ret = z_BinLogAppendRecord(&kv->BinLog, r);
   z_RecordFree(r);
-
-  if (ret != z_OK) {
-    z_error("z_BinLogAppendRecord %d", ret);
-    return ret;
-  }
 
   return ret;
 }
