@@ -2,6 +2,7 @@
 
 #include "zbinlog/record_test.h"
 #include "zutils/utils_test.h"
+#include "zkv/kv_test.h"
 
 int main() {
   z_LogInit("./bin/log.txt");
@@ -10,6 +11,8 @@ int main() {
   z_CHECK(1);
   z_RecordTest();
   z_UtilsTest();
+
+  z_KVTest();
 
   z_LogDestory();
 }

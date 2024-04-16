@@ -56,7 +56,7 @@ z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, int8_t *data,
   if (wr->CurSize + len < wr->MaxSize) {
     *offset = ftell(wr->File);
     if (*offset < 0) {
-      z_error("ftell %ll", *offset);
+      z_error("ftell %lld", *offset);
       return z_ERR_SYS;
     }
 
@@ -70,7 +70,7 @@ z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, int8_t *data,
     wr->CurSize += len;
 
   } else {
-    z_error("nospace current:%ll len:%ll max:%ll", wr->CurSize, len,
+    z_error("nospace current:%lld len:%lld max:%lld", wr->CurSize, len,
             wr->MaxSize);
     ret = z_ERR_NOSPACE;
   }
@@ -121,7 +121,7 @@ z_Error z_BinLogFileReaderRead(z_BinLogFileReader *rd, int8_t *data,
 
   int64_t l = fread(data, sizeof(int8_t), len, rd->File);
   if (l != len) {
-    z_error("fread %ll", l);
+    z_error("fread %lld", l);
     return z_ERR_SYS;
   }
 
@@ -147,7 +147,7 @@ z_Error z_BinLogFileReaderGetRecord(z_BinLogFileReader *rd, z_Record **r) {
   int64_t len = z_RecordLen(&record);
   z_Record *ret_record = z_RecordNewByLen(len);
   *ret_record = record;
-  ret = z_BinLogFileReaderRead(rd, (int8_t *)(ret_record + sizeof(z_Record)),
+  ret = z_BinLogFileReaderRead(rd, (int8_t *)(ret_record + 1),
                                len - sizeof(z_Record));
   if (ret != z_OK) {
     z_error("z_BinLogFileReaderRead");

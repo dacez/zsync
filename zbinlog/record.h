@@ -40,7 +40,7 @@ z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
     return z_ERR_INVALID_DATA;
   }
 
-  key->Data = (int8_t*)(r + sizeof(z_Record));
+  key->Data = (int8_t*)(r + 1);
   key->Len = r->KeyLen;
 
   return z_OK;
@@ -52,7 +52,7 @@ z_Error z_RecordValue(z_Record *r, z_Buffer *value) {
     return z_ERR_INVALID_DATA;
   }
 
-  value->Data = (int8_t*)(r + sizeof(z_Record)) + r->KeyLen;
+  value->Data = (int8_t*)(r + 1) + r->KeyLen;
   value->Len = r->ValLen;
 
   return z_OK;

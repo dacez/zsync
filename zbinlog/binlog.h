@@ -74,7 +74,7 @@ z_Error z_BinLogAppendRecord(z_BinLog *bl, z_Record *r) {
     z_error("pthread_mutex_unlock");
     return z_ERR_SYS; 
   }
-  return z_OK;
+  return ret;
 }
 
 #endif
