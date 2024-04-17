@@ -49,35 +49,27 @@ z_Error z_ListInit(z_List *l) {
     return z_ERR_INVALID_DATA;
   }
 
-  l->List = z_malloc(sizeof(z_ListRecord) * z_LIST_INIT_LEN);
-  if (l->List == nullptr) {
-    z_error("len == %lld", z_LIST_INIT_LEN);
-    return z_ERR_NOSPACE;
-  }
-  l->Len = z_LIST_INIT_LEN;
+  l->List = nullptr;
+  l->Len = 0;
   l->Pos = 0;
-  memset(l->List, 0, sizeof(sizeof(z_ListRecord) * l->Len));
   return z_OK;
 }
 
 z_Error z_ListGrow(z_List *l) {
-  if (l->List == nullptr || l->Len == 0) {
-    z_error("l->List == nullptr || l->Len == 0");
-    return z_ERR_INVALID_DATA;
-  }
-
   z_ListRecord *rs = l->List;
-  int64_t len = l->Len;
-  l->List = z_malloc(sizeof(z_ListRecord) * len * 2);
+  int64_t len = l->Len == 0 ? z_LIST_INIT_LEN : l->Len * 2;
+  l->List = z_malloc(sizeof(z_ListRecord) * len);
   if (l->List == nullptr) {
-    z_error("len == %lld", len * 2);
+    z_error("len == %lld", len);
     l->List = rs;
     return z_ERR_NOSPACE;
   }
-  l->Len = len * 2;
+  l->Len = len;
   memset(l->List, 0, sizeof(sizeof(z_ListRecord) * l->Len));
-  memcpy(l->List, rs, len);
-  z_free(rs);
+  if (rs != nullptr) {
+    memcpy(l->List, rs, len);
+    z_free(rs);
+  }
 
   return z_OK;
 }
@@ -162,8 +154,8 @@ z_Error z_ListForceUpdate(z_List *l, z_Buffer k, z_ListRecord r, void *attr,
   return z_OK;
 }
 
-z_Error z_ListUpdate(z_List *l, z_Buffer k, z_ListRecord r, z_Buffer src_v, void *attr,
-                          z_MapIsEqual *isEqual) {
+z_Error z_ListUpdate(z_List *l, z_Buffer k, z_ListRecord r, z_Buffer src_v,
+                     void *attr, z_MapIsEqual *isEqual) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
     z_error("l == nullptr || k.Data == nullptr || k.Len == 0 || attr == "
@@ -325,8 +317,8 @@ z_Error z_BucketForceUpdate(z_Bucket *b, z_Buffer k, int64_t hash,
   return ret;
 }
 
-z_Error z_BucketUpdate(z_Bucket *b, z_Buffer k, int64_t hash,
-                            int64_t offset, z_Buffer src_v, void *attr, z_MapIsEqual *isEqual) {
+z_Error z_BucketUpdate(z_Bucket *b, z_Buffer k, int64_t hash, int64_t offset,
+                       z_Buffer src_v, void *attr, z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
     z_error("b == nullptr || k.Data == nullptr || k.Len == 0 || attr == "

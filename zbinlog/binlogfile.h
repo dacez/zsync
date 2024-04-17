@@ -77,7 +77,8 @@ z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, int8_t *data,
   return ret;
 }
 
-z_Error z_BinLogFileWriterAppendRecord(z_BinLogFileWriter *wr, z_Record *r, int64_t *offset) {
+z_Error z_BinLogFileWriterAppendRecord(z_BinLogFileWriter *wr, z_Record *r,
+                                       int64_t *offset) {
   return z_BinLogFileWriterWrite(wr, (int8_t *)r, z_RecordLen(r), offset);
 }
 
@@ -137,8 +138,7 @@ z_Error z_BinLogFileReaderGetRecord(z_BinLogFileReader *rd, z_Record **r) {
   *r = nullptr;
 
   z_Record record;
-  z_Error ret =
-      z_BinLogFileReaderRead(rd, (int8_t *)&record, sizeof(z_Record));
+  z_Error ret = z_BinLogFileReaderRead(rd, (int8_t *)&record, sizeof(z_Record));
   if (ret != z_OK) {
     z_error("z_BinLogFileReaderRead");
     return ret;

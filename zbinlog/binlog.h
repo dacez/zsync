@@ -8,7 +8,6 @@
 
 #include "zbinlog/binlogfile.h"
 
-
 typedef z_Error z_BinLogAfterWrite(void *, z_Record *, int64_t);
 
 typedef struct {
@@ -34,9 +33,12 @@ void z_BinLogDestory(z_BinLog *bl) {
   return;
 }
 
-z_Error z_BinLogInit(z_BinLog *bl, char *path, int64_t max_size, void *attr, z_BinLogAfterWrite *after_write) {
-  if (bl == nullptr || path == nullptr || max_size == 0 || attr == nullptr || after_write == nullptr) {
-    z_error("bl == nullptr || path == nullptr || max_size == 0 || attr == nullptr || after_write == nullptr");
+z_Error z_BinLogInit(z_BinLog *bl, char *path, int64_t max_size, void *attr,
+                     z_BinLogAfterWrite *after_write) {
+  if (bl == nullptr || path == nullptr || max_size == 0 || attr == nullptr ||
+      after_write == nullptr) {
+    z_error("bl == nullptr || path == nullptr || max_size == 0 || attr == "
+            "nullptr || after_write == nullptr");
     return z_ERR_INVALID_DATA;
   }
 
@@ -72,7 +74,7 @@ z_Error z_BinLogAppendRecord(z_BinLog *bl, z_Record *r) {
 
   if (pthread_mutex_unlock(&bl->Mtx) != 0) {
     z_error("pthread_mutex_unlock");
-    return z_ERR_SYS; 
+    return z_ERR_SYS;
   }
   return ret;
 }

@@ -136,16 +136,20 @@ void z_KVDestory(z_KV *kv) {
   return;
 }
 
-z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size, int64_t buckets_len) {
-  if (kv == nullptr || strlen(path) >= z_MAX_PATH_LENGTH || binlog_file_max_size == 0 || buckets_len == 0) {
-    z_error("kv == nullptr || strlen(path) >= z_MAX_PATH_LENGTH || binlog_file_max_size == 0 || buckets_len == 0");
+z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size,
+                 int64_t buckets_len) {
+  if (kv == nullptr || strlen(path) >= z_MAX_PATH_LENGTH ||
+      binlog_file_max_size == 0 || buckets_len == 0) {
+    z_error("kv == nullptr || strlen(path) >= z_MAX_PATH_LENGTH || "
+            "binlog_file_max_size == 0 || buckets_len == 0");
     return z_ERR_INVALID_DATA;
   }
   memset(kv->BinLogPath, 0, z_MAX_PATH_LENGTH);
   strncpy(kv->BinLogPath, path, z_MAX_PATH_LENGTH - 1);
   kv->BinLogFileMaxSize = binlog_file_max_size;
   kv->BucketsLen = buckets_len;
-  z_Error ret = z_BinLogInit(&kv->BinLog, kv->BinLogPath, kv->BinLogFileMaxSize, &kv->Map, z_recordToMap);
+  z_Error ret = z_BinLogInit(&kv->BinLog, kv->BinLogPath, kv->BinLogFileMaxSize,
+                             &kv->Map, z_recordToMap);
   if (ret != z_OK) {
     return ret;
   }
@@ -168,11 +172,11 @@ z_Error z_KVInsert(z_KV *kv, z_Buffer k, z_Buffer v) {
     z_error("z_RecordNew == nullptr");
     return z_ERR_NOSPACE;
   }
-  
+
   z_Error ret = z_BinLogAppendRecord(&kv->BinLog, r);
   z_RecordFree(r);
 
-    if (ret != z_OK) {
+  if (ret != z_OK) {
     z_error("z_BinLogAppendRecord %d", ret);
     return ret;
   }
@@ -239,7 +243,7 @@ z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
   z_BinLogFileReader rd;
   ret = z_BinLogFileReaderInit(&rd, kv->BinLogPath);
   if (ret != z_OK) {
-    return ret;    
+    return ret;
   }
 
   ret = z_BinLogFileReaderSet(&rd, offset);
@@ -264,7 +268,7 @@ z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
     return ret;
   }
 
-  ret = z_BufferResetByBuffer(v,vv);
+  ret = z_BufferResetByBuffer(v, vv);
 
   z_RecordFree(r);
   z_BinLogFileReaderDestory(&rd);
@@ -277,7 +281,7 @@ z_Error z_KVDelete(z_KV *kv, z_Buffer k) {
     z_error("kv == nullptr");
     return z_ERR_INVALID_DATA;
   }
- 
+
   z_Buffer v = {};
   z_Record *r = z_RecordNew(z_RECORD_OP_DELETE, k, v);
   if (r == nullptr) {

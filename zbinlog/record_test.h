@@ -10,5 +10,4 @@ void z_RecordTest() {
   r = z_RecordNewByLen(sizeof(z_Record));
   z_ASSERT(r != nullptr);
   z_RecordFree(r);
-
 }

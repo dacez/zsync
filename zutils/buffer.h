@@ -5,15 +5,18 @@
 #include <string.h>
 
 #include "zerror/error.h"
-#include "zutils/mem.h"
 #include "zutils/log.h"
+#include "zutils/mem.h"
 
 typedef struct {
   int8_t *Data;
   int64_t Len;
 } z_Buffer;
 
-#define z_CShortStr(z_str, cstr) memset(cstr, 0, sizeof(cstr));memcpy(cstr, z_str.Data, z_str.Len < sizeof(cstr) - 1 ? z_str.Len : sizeof(cstr) - 1);
+#define z_CShortStr(z_str, cstr)                                               \
+  memset(cstr, 0, sizeof(cstr));                                               \
+  memcpy(cstr, z_str.Data,                                                     \
+         z_str.Len < sizeof(cstr) - 1 ? z_str.Len : sizeof(cstr) - 1);
 
 bool z_BufferIsEqual(z_Buffer a, z_Buffer b) {
   if (a.Len != b.Len) {
