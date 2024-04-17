@@ -30,11 +30,12 @@ void z_BufferDestory(z_Buffer *s) {
   }
 
   z_free(s->Data);
+  s->Data = nullptr;
   s->Len = 0;
 }
 
 z_Error z_BufferReset(z_Buffer *s, int8_t *d, int64_t len) {
-  if (s == nullptr || d == nullptr || len == 0) {
+  if (s == nullptr) {
     z_error("s == nullptr || d == nullptr || len == 0");
     return z_ERR_INVALID_DATA;
   }
@@ -56,8 +57,25 @@ z_Error z_BufferReset(z_Buffer *s, int8_t *d, int64_t len) {
   return z_OK;
 }
 
-z_Error z_BufferResetByBuffer(z_Buffer *s, z_Buffer str) {
-  return z_BufferReset(s, s->Data, s->Len);
+z_Error z_BufferResetByBuffer(z_Buffer *des, z_Buffer src) {
+  return z_BufferReset(des, src.Data, src.Len);
+}
+
+z_Error z_BufferInit(z_Buffer *s, int8_t *data, int64_t len) {
+  s->Data = nullptr;
+  s->Len = 0;
+  return z_BufferReset(s, data, len);
+}
+
+z_Error z_BufferInitByBuffer(z_Buffer *des, z_Buffer src) {
+  des->Data = nullptr;
+  des->Len = 0;
+  return z_BufferResetByBuffer(des, src);
+}
+
+z_Buffer z_BufferEmpty() {
+  z_Buffer buffer = {.Data = nullptr, .Len = 0};
+  return buffer;
 }
 
 #endif

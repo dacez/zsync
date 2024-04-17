@@ -229,7 +229,13 @@ z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
     return ret;    
   }
 
-  z_Record *r;
+  ret = z_BinLogFileReaderSet(&rd, offset);
+  if (ret != z_OK) {
+    z_BinLogFileReaderDestory(&rd);
+    return ret;
+  }
+
+  z_Record *r = nullptr;
   ret = z_BinLogFileReaderGetRecord(&rd, &r);
   if (ret != z_OK) {
     z_BinLogFileReaderDestory(&rd);
