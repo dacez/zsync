@@ -13,7 +13,7 @@ typedef struct {
   int64_t Len;
 } z_Buffer;
 
-#define z_CStr(z_str, cstr) memset(cstr, 0, sizeof(cstr));memcpy(cstr, z_str.Data, z_str.Len < sizeof(cstr) - 1 ? z_str.Len : sizeof(cstr) - 1);
+#define z_CShortStr(z_str, cstr) memset(cstr, 0, sizeof(cstr));memcpy(cstr, z_str.Data, z_str.Len < sizeof(cstr) - 1 ? z_str.Len : sizeof(cstr) - 1);
 
 bool z_BufferIsEqual(z_Buffer a, z_Buffer b) {
   if (a.Len != b.Len) {
@@ -35,8 +35,8 @@ void z_BufferDestory(z_Buffer *s) {
 }
 
 z_Error z_BufferReset(z_Buffer *s, int8_t *d, int64_t len) {
-  if (s == nullptr) {
-    z_error("s == nullptr || d == nullptr || len == 0");
+  if (s == nullptr || d == nullptr || len == 0 || len > 0xFFFF) {
+    z_error("s == nullptr || d == nullptr || len == 0 || len > 0xFFFF");
     return z_ERR_INVALID_DATA;
   }
 

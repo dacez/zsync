@@ -4,7 +4,7 @@
 #include "zbinlog/binlog.h"
 #include "zhash/map.h"
 
-#define z_MAX_PATH_LENGTH 128
+#define z_MAX_PATH_LENGTH 1024
 
 typedef struct {
   z_BinLog BinLog;
@@ -40,31 +40,22 @@ z_Error z_recordToMap(void *attr, z_Record *r, int64_t offset) {
     return z_MapDelete(m, k);
   }
   case z_RECORD_OP_UPDATE: {
-    /*
     z_Buffer k;
     ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
     }
-    z_Buffer v;
-    ret = z_RecordValue(r, &v);
+    z_Buffer src_v;
+    ret = z_RecordNext(r, &src_v);
     if (ret != z_OK) {
       return ret;
     }
-    return z_MapUpdate(m, k, v, offset, false);
-    */
-    z_error("invalid op %d", r->OP);
-    return z_ERR_INVALID_DATA;
+    return z_MapUpdate(m, k, offset, src_v);
   }
 
   case z_RECORD_OP_FORCE_UPDATE: {
     z_Buffer k;
     ret = z_RecordKey(r, &k);
-    if (ret != z_OK) {
-      return ret;
-    }
-    z_Buffer v;
-    ret = z_RecordValue(r, &v);
     if (ret != z_OK) {
       return ret;
     }
@@ -198,6 +189,28 @@ z_Error z_KVForceUpdate(z_KV *kv, z_Buffer k, z_Buffer v) {
   z_Record *r = z_RecordNew(z_RECORD_OP_FORCE_UPDATE, k, v);
   if (r == nullptr) {
     z_error("z_RecordNew == nullptr");
+    return z_ERR_NOSPACE;
+  }
+
+  z_Error ret = z_BinLogAppendRecord(&kv->BinLog, r);
+  z_RecordFree(r);
+
+  if (ret != z_OK) {
+    return ret;
+  }
+
+  return ret;
+}
+
+z_Error z_KVUpdate(z_KV *kv, z_Buffer k, z_Buffer v, z_Buffer src_v) {
+  if (kv == nullptr) {
+    z_error("kv == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
+  z_Record *r = z_RecordNewByNext(z_RECORD_OP_UPDATE, k, v, src_v);
+  if (r == nullptr) {
+    z_error("z_RecordNewByNext == nullptr");
     return z_ERR_NOSPACE;
   }
 
