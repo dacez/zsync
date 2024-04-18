@@ -1,12 +1,2 @@
-#include <string.h>
-
-#include "ztest/test.h"
-
-#include "zutils/utils.h"
-
-void z_UtilsTest() {
-  z_CHECK(z_NowMS() > 0 && z_NowNS() > 0 && z_NowS > 0);
-  char lt[32] = {};
-  z_LocalTime(lt);
-  z_CHECK(strlen(lt) > 0);
-}
+#include "zutils/lock_test.h"
+#include "zutils/time_test.h"

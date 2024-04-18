@@ -11,7 +11,8 @@ int main() {
   z_ASSERT(1);
   z_CHECK(1);
   z_RecordTest();
-  z_UtilsTest();
+  z_TimeTest();
+  z_LockTest();
   z_KVTest();
   z_KVLoopTest();
 

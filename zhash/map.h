@@ -9,7 +9,7 @@
 
 #include "zhash/hash.h"
 
-#define z_LIST_MAX_LEN 256
+#define z_LIST_MAX_LEN 1024*16
 
 typedef struct {
   int64_t Offset;

@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 #include "zkv/kv.h"
 #include "ztest/test.h"
 
@@ -127,75 +129,65 @@ bool z_DeleteNotFound(z_KV *kv, int64_t i) {
   return ret == z_ERR_NOT_FOUND;
 }
 
-void z_ListKV(z_KV *kv) {
-  for (int64_t i = 0; i < kv->Map.BucketsLen; i++) {
-    for (int64_t ii = 0; ii < kv->Map.Buckets[i].List.Pos; ii++) {
-      if (kv->Map.Buckets[i].List.Records[ii].Hash == 0) {
-        printf("hash == 0 %lld %lld %d\n", i, ii, kv->Map.Buckets[i].List.Len);
-      }
-    }
-  }
-}
-
-bool z_Loop(z_KV *kv, int64_t count) {
+bool z_Loop(z_KV *kv, int64_t start, int64_t count) {
   bool final_ret = true;
   bool ret = false;
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_Insert(kv, i);
     if (ret == false) {
       final_ret = false;
     }
   }
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_Find(kv, i, i);
     if (ret == false) {
       final_ret = false;
     }
   }
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_ForceUpdate(kv, i, count - 1 - i);
     if (ret == false) {
       final_ret = false;
     }
   }
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_Find(kv, i, count - 1 - i);
     if (ret == false) {
       final_ret = false;
     }
   }
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_Update(kv, i, i, count - 1 - i);
     if (ret == false) {
       final_ret = false;
     }
   }
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_Find(kv, i, i);
     if (ret == false) {
       final_ret = false;
     }
   }
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_Delete(kv, i);
     if (ret == false)
       final_ret = false;
   }
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_FindNotFound(kv, i);
     if (ret == false)
       final_ret = false;
   }
 
-  for (int64_t i = 0; i < count; ++i) {
+  for (int64_t i = start; i < count; ++i) {
     ret = z_DeleteNotFound(kv, i);
     if (ret == false)
       final_ret = false;
@@ -204,19 +196,90 @@ bool z_Loop(z_KV *kv, int64_t count) {
   return final_ret;
 }
 
-void z_KVLoopTest() {
-
+void z_OneThread() {
   char *binlog_path = "./bin/binlog.log";
   remove(binlog_path);
 
   z_KV kv;
   z_Error ret =
-      z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 1024 * 1024 * 10);
+      z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 1024 * 1024);
   z_ASSERT(ret == z_OK);
 
-  bool loop_ret = z_Loop(&kv, 1000000);
+  bool loop_ret = z_Loop(&kv, 0, 10000);
   z_ASSERT(loop_ret == true);
 
   z_KVDestroy(&kv);
   return;
+}
+
+typedef struct {
+  z_KV *kv;
+  int64_t start;
+  int64_t count;
+  bool ret;
+  pthread_t tid;
+} z_Arg;
+
+void* z_KVThreadFunc(void *ptr) {
+  z_Arg *arg = (z_Arg*)ptr;
+  arg->ret = z_Loop(arg->kv, arg->start, arg->count);
+  return nullptr;
+}
+
+void z_MutilThread() {
+
+  int64_t thread_count = 64;
+  int64_t step = 100000;
+
+  char *binlog_path = "./bin/binlog.log";
+  remove(binlog_path);
+  z_KV kv;
+  z_Error ret =
+      z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 10240);
+  z_ASSERT(ret == z_OK);
+
+  z_Arg *args = z_malloc(sizeof(z_Arg) * thread_count);
+  for (int i = 0; i < thread_count; i++) {
+    args[i].kv = &kv;
+    args[i].start = i * step;
+    args[i].count = step;
+  }
+  for (int i = 0; i < thread_count; i++) {
+    int p_ret = pthread_create(&args[i].tid, nullptr, z_KVThreadFunc, &args[i]);
+    if (p_ret != 0) {
+      z_ASSERT("p_ret != 0");
+    }
+  }
+
+  for (int i = 0; i < thread_count; i++) {
+    int p_ret = pthread_join(args[i].tid, nullptr);
+    if (p_ret != 0) {
+      z_ASSERT("p_ret != 0");
+    }
+  }
+
+  bool func_ret = true;
+  for (int i = 0; i < thread_count; i++) {
+    if (args[i].ret == false) func_ret = false;
+  }
+
+  int64_t list_len = 0;
+  for (int64_t i = 0; i < kv.Map.BucketsLen; i++) {
+    list_len += kv.Map.Buckets[i].List.Len;
+  }
+
+  int64_t count = 0;
+  for (int64_t i = 0; i < kv.Map.BucketsLen; i++) {
+    count += atomic_load(&kv.Map.Buckets[i].Lock.Count);
+  }
+
+  z_ASSERT(func_ret == true);
+  z_free(args);
+  z_KVDestroy(&kv);
+  return;
+}
+
+void z_KVLoopTest() {
+  z_OneThread();
+  z_MutilThread();
 }
