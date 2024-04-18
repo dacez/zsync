@@ -35,7 +35,7 @@ z_Error z_BinLogFileWriterInit(z_BinLogFileWriter *wr, char *path,
   return z_OK;
 }
 
-void z_BinLogFileWriterDestory(z_BinLogFileWriter *wr) {
+void z_BinLogFileWriterDestroy(z_BinLogFileWriter *wr) {
   if (wr == nullptr || wr->File == nullptr) {
     z_debug("wr == nullptr || wr->File == nullptr");
     return;
@@ -101,7 +101,7 @@ z_Error z_BinLogFileReaderInit(z_BinLogFileReader *rd, char *path) {
   return z_OK;
 }
 
-void z_BinLogFileReaderDestory(z_BinLogFileReader *rd) {
+void z_BinLogFileReaderDestroy(z_BinLogFileReader *rd) {
   if (rd == nullptr) {
     z_debug("rd == nullptr");
     return;

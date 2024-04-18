@@ -1,6 +1,7 @@
 #include "ztest/test.h"
 
 #include "zbinlog/record_test.h"
+#include "zkv/kv_loop_test.h"
 #include "zkv/kv_test.h"
 #include "zutils/utils_test.h"
 
@@ -12,6 +13,7 @@ int main() {
   z_RecordTest();
   z_UtilsTest();
   z_KVTest();
+  z_KVLoopTest();
 
-  z_LogDestory();
+  z_LogDestroy();
 }

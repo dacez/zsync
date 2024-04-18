@@ -1,7 +1,6 @@
 #ifndef z_MAP_H
 #define z_MAP_H
 
-#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -10,7 +9,7 @@
 
 #include "zhash/hash.h"
 
-#define z_LIST_INIT_LEN 2LL
+#define z_LIST_MAX_LEN 256
 
 typedef struct {
   int64_t Offset;
@@ -26,19 +25,19 @@ typedef bool z_MapIsEqual(void *attr, z_MapCmpType type, z_Buffer str,
                           z_ListRecord r);
 
 typedef struct {
-  int64_t Pos;
-  int64_t Len;
-  z_ListRecord *List;
+  int16_t Pos;
+  int16_t Len;
+  z_ListRecord *Records;
 } z_List;
 
 void z_ListDestroy(z_List *l) {
-  if (l == nullptr || l->List == nullptr) {
+  if (l == nullptr || l->Records == nullptr) {
     z_debug("l == nullptr || l->List == nullptr");
     return;
   }
 
-  z_free(l->List);
-  l->List = nullptr;
+  z_free(l->Records);
+  l->Records = nullptr;
   l->Len = 0;
   l->Pos = 0;
 }
@@ -49,26 +48,34 @@ z_Error z_ListInit(z_List *l) {
     return z_ERR_INVALID_DATA;
   }
 
-  l->List = nullptr;
+  l->Records = nullptr;
   l->Len = 0;
   l->Pos = 0;
   return z_OK;
 }
 
 z_Error z_ListGrow(z_List *l) {
-  z_ListRecord *rs = l->List;
-  int64_t len = l->Len == 0 ? z_LIST_INIT_LEN : l->Len * 2;
-  l->List = z_malloc(sizeof(z_ListRecord) * len);
-  if (l->List == nullptr) {
-    z_error("len == %lld", len);
-    l->List = rs;
+  z_ListRecord *src_rs = l->Records;
+  int16_t src_len = l->Len;
+
+  int16_t len = src_len == 0 ? 2 : src_len * 2;
+  if (len >= z_LIST_MAX_LEN) {
+    z_error("len == %u max %u", len, z_LIST_MAX_LEN);
+    return z_ERR_NOSPACE;
+  }
+
+  l->Records = z_malloc(sizeof(z_ListRecord) * len);
+  if (l->Records == nullptr) {
+    z_error("len == %d", len);
+    l->Records = src_rs;
     return z_ERR_NOSPACE;
   }
   l->Len = len;
-  memset(l->List, 0, sizeof(sizeof(z_ListRecord) * l->Len));
-  if (rs != nullptr) {
-    memcpy(l->List, rs, len);
-    z_free(rs);
+  memset(l->Records, 0, sizeof(z_ListRecord) * l->Len);
+
+  if (src_rs != nullptr) {
+    memcpy(l->Records, src_rs, sizeof(z_ListRecord) * src_len);
+    z_free(src_rs);
   }
 
   return z_OK;
@@ -85,14 +92,14 @@ z_Error z_ListInsert(z_List *l, z_Buffer k, z_ListRecord r, void *attr,
 
   z_Error ret = z_OK;
 
-  for (int64_t i = 0; i < l->Pos; ++i) {
-    if (l->List[i].Hash == r.Hash) {
-      if (l->List[i].Offset == r.Offset) {
-        z_debug("i %lld hash %lld offset %lld", i, r.Hash, r.Offset);
+  for (int16_t i = 0; i < l->Pos; ++i) {
+    if (l->Records[i].Hash == r.Hash) {
+      if (l->Records[i].Offset == r.Offset) {
+        z_debug("i %d hash %lld offset %lld", i, r.Hash, r.Offset);
         return z_ERR_EXIST;
       } else {
-        z_debug("i %lld hash %lld arg_offset %lld list_offset %lld", i, r.Hash,
-                r.Offset, l->List[i].Offset);
+        z_debug("i %d hash %lld arg_offset %lld list_offset %lld", i, r.Hash,
+                r.Offset, l->Records[i].Offset);
         if (isEqual(attr, Z_MAP_CMP_TYPE_KEY, k, r) == true) {
           char short_key[32] = {};
           z_CShortStr(k, short_key);
@@ -111,7 +118,7 @@ z_Error z_ListInsert(z_List *l, z_Buffer k, z_ListRecord r, void *attr,
     return z_ListInsert(l, k, r, attr, isEqual);
   }
 
-  l->List[l->Pos++] = r;
+  l->Records[l->Pos++] = r;
   return ret;
 }
 
@@ -124,10 +131,10 @@ z_Error z_ListFind(z_List *l, z_Buffer k, int64_t hash, void *attr,
     return z_ERR_INVALID_DATA;
   }
 
-  for (int64_t i = 0; i < l->Pos; ++i) {
-    if (l->List[i].Hash == hash &&
-        isEqual(attr, Z_MAP_CMP_TYPE_KEY, k, l->List[i]) == true) {
-      *res = &l->List[i];
+  for (int16_t i = 0; i < l->Pos; ++i) {
+    if (l->Records[i].Hash == hash &&
+        isEqual(attr, Z_MAP_CMP_TYPE_KEY, k, l->Records[i]) == true) {
+      *res = &l->Records[i];
       return z_OK;
     }
   }
@@ -188,11 +195,11 @@ z_Error z_ListDelete(z_List *l, z_Buffer k, int64_t hash, void *attr,
     return z_ERR_INVALID_DATA;
   }
 
-  int64_t ii = 0;
-  for (int64_t i = 0; i < l->Pos; ++i) {
-    if (l->List[i].Hash != hash ||
-        isEqual(attr, Z_MAP_CMP_TYPE_KEY, k, l->List[i]) != true) {
-      l->List[ii] = l->List[i];
+  int16_t ii = 0;
+  for (int16_t i = 0; i < l->Pos; ++i) {
+    if (l->Records[i].Hash != hash ||
+        isEqual(attr, Z_MAP_CMP_TYPE_KEY, k, l->Records[i]) != true) {
+      l->Records[ii] = l->Records[i];
       ++ii;
     }
   }
@@ -205,7 +212,7 @@ z_Error z_ListDelete(z_List *l, z_Buffer k, int64_t hash, void *attr,
 }
 
 typedef struct {
-  pthread_mutex_t Mtx;
+  z_Lock Lock;
   z_List List;
 } z_Bucket;
 
@@ -215,10 +222,7 @@ z_Error z_BucketInit(z_Bucket *b) {
     return z_ERR_INVALID_DATA;
   }
 
-  if (pthread_mutex_init(&b->Mtx, nullptr) != 0) {
-    z_error("pthread_mutex_init");
-    return z_ERR_SYS;
-  }
+  z_LockInit(&b->Lock);
 
   return z_ListInit(&b->List);
 }
@@ -231,10 +235,7 @@ void z_BucketDestroy(z_Bucket *b) {
 
   z_ListDestroy(&b->List);
 
-  if (pthread_mutex_destroy(&b->Mtx) != 0) {
-    z_error("pthread_mutex_destroy");
-    return;
-  }
+  z_LockDestroy(&b->Lock);
 
   return;
 }
@@ -249,18 +250,12 @@ z_Error z_BucketInsert(z_Bucket *b, z_Buffer k, int64_t hash, int64_t offset,
     return z_ERR_INVALID_DATA;
   }
 
-  if (pthread_mutex_lock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_lock");
-    return z_ERR_SYS;
-  }
+  z_LockLock(&b->Lock);
 
   z_ListRecord r = {.Hash = hash, .Offset = offset};
   z_Error ret = z_ListInsert(&b->List, k, r, attr, isEqual);
 
-  if (pthread_mutex_unlock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_unlock");
-    return z_ERR_SYS;
-  }
+  z_LockUnLock(&b->Lock);
 
   return ret;
 }
@@ -274,20 +269,15 @@ z_Error z_BucketFind(z_Bucket *b, z_Buffer k, int64_t hash, void *attr,
     return z_ERR_INVALID_DATA;
   }
 
-  if (pthread_mutex_lock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_lock");
-    return z_ERR_SYS;
-  }
+  z_LockLock(&b->Lock);
+
   z_ListRecord *record;
   z_Error ret = z_ListFind(&b->List, k, hash, attr, isEqual, &record);
   if (ret == z_OK) {
     *offset = record->Offset;
   }
 
-  if (pthread_mutex_unlock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_unlock");
-    return z_ERR_SYS;
-  }
+  z_LockUnLock(&b->Lock);
 
   return ret;
 }
@@ -301,18 +291,12 @@ z_Error z_BucketForceUpdate(z_Bucket *b, z_Buffer k, int64_t hash,
     return z_ERR_INVALID_DATA;
   }
 
-  if (pthread_mutex_lock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_lock");
-    return z_ERR_SYS;
-  }
+  z_LockLock(&b->Lock);
 
   z_ListRecord r = {.Hash = hash, .Offset = offset};
   z_Error ret = z_ListForceUpdate(&b->List, k, r, attr, isEqual);
 
-  if (pthread_mutex_unlock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_unlock");
-    return z_ERR_SYS;
-  }
+  z_LockUnLock(&b->Lock);
 
   return ret;
 }
@@ -326,18 +310,12 @@ z_Error z_BucketUpdate(z_Bucket *b, z_Buffer k, int64_t hash, int64_t offset,
     return z_ERR_INVALID_DATA;
   }
 
-  if (pthread_mutex_lock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_lock");
-    return z_ERR_SYS;
-  }
+  z_LockLock(&b->Lock);
 
   z_ListRecord r = {.Hash = hash, .Offset = offset};
   z_Error ret = z_ListUpdate(&b->List, k, r, src_v, attr, isEqual);
 
-  if (pthread_mutex_unlock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_unlock");
-    return z_ERR_SYS;
-  }
+  z_LockUnLock(&b->Lock);
 
   return ret;
 }
@@ -351,17 +329,11 @@ z_Error z_BucketDelete(z_Bucket *b, z_Buffer k, int64_t hash, void *attr,
     return z_ERR_INVALID_DATA;
   }
 
-  if (pthread_mutex_lock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_lock");
-    return z_ERR_SYS;
-  }
+  z_LockLock(&b->Lock);
 
   z_Error ret = z_ListDelete(&b->List, k, hash, attr, isEqual);
 
-  if (pthread_mutex_unlock(&b->Mtx) != 0) {
-    z_error("pthread_mutex_unlock");
-    return z_ERR_SYS;
-  }
+  z_LockUnLock(&b->Lock);
 
   return ret;
 }
@@ -425,7 +397,7 @@ z_Error z_MapInsert(z_Map *m, z_Buffer k, int64_t offset) {
     return z_ERR_INVALID_DATA;
   }
 
-  int64_t hash = z_Hash(k.Data, k.Len);
+  uint64_t hash = z_Hash(k.Data, k.Len);
   z_Bucket *b = &m->Buckets[hash % m->BucketsLen];
   return z_BucketInsert(b, k, hash, offset, m->Attr, m->IsEqual);
 }
@@ -437,7 +409,7 @@ z_Error z_MapFind(z_Map *m, z_Buffer k, int64_t *offset) {
     return z_ERR_INVALID_DATA;
   }
 
-  int64_t hash = z_Hash(k.Data, k.Len);
+  uint64_t hash = z_Hash(k.Data, k.Len);
   z_Bucket *b = &m->Buckets[hash % m->BucketsLen];
   return z_BucketFind(b, k, hash, m->Attr, m->IsEqual, offset);
 }
@@ -448,7 +420,7 @@ z_Error z_MapForceUpdate(z_Map *m, z_Buffer k, int64_t offset) {
     return z_ERR_INVALID_DATA;
   }
 
-  int64_t hash = z_Hash(k.Data, k.Len);
+  uint64_t hash = z_Hash(k.Data, k.Len);
   z_Bucket *b = &m->Buckets[hash % m->BucketsLen];
   return z_BucketForceUpdate(b, k, hash, offset, m->Attr, m->IsEqual);
 }
@@ -459,7 +431,7 @@ z_Error z_MapUpdate(z_Map *m, z_Buffer k, int64_t offset, z_Buffer src_v) {
     return z_ERR_INVALID_DATA;
   }
 
-  int64_t hash = z_Hash(k.Data, k.Len);
+  uint64_t hash = z_Hash(k.Data, k.Len);
   z_Bucket *b = &m->Buckets[hash % m->BucketsLen];
   return z_BucketUpdate(b, k, hash, offset, src_v, m->Attr, m->IsEqual);
 }
@@ -470,7 +442,7 @@ z_Error z_MapDelete(z_Map *m, z_Buffer k) {
     return z_ERR_INVALID_DATA;
   }
 
-  int64_t hash = z_Hash(k.Data, k.Len);
+  uint64_t hash = z_Hash(k.Data, k.Len);
   z_Bucket *b = &m->Buckets[hash % m->BucketsLen];
   return z_BucketDelete(b, k, hash, m->Attr, m->IsEqual);
 }

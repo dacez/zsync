@@ -77,7 +77,7 @@ z_Error z_RecordCheck(z_Record *r) {
 
   int8_t sum = r->Sum;
   r->Sum = 0;
-  int8_t s = z_Checksum((int8_t *)r, z_RecordLen(r));
+  int8_t s = (int8_t)z_Checksum((int8_t *)r, z_RecordLen(r));
   r->Sum = sum;
 
   if (s == sum) {
@@ -94,7 +94,7 @@ void z_RecordSum(z_Record *r) {
   }
 
   r->Sum = 0;
-  int8_t s = z_Checksum((int8_t *)r, z_RecordLen(r));
+  int8_t s = (int8_t)z_Checksum((int8_t *)r, z_RecordLen(r));
   r->Sum = s;
 
   return;

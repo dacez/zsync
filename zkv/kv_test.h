@@ -1,10 +1,12 @@
 #include "zkv/kv.h"
 #include "ztest/test.h"
 
-int z_KVTest() {
+void z_KVTest() {
 
+  char *binlog_path = "./bin/binlog.log";
   z_KV kv;
-  z_Error ret = z_KVInit(&kv, "./bin/binlog.log", 1024 * 1024 * 1024, 1024);
+  remove(binlog_path);
+  z_Error ret = z_KVInit(&kv, binlog_path, 1024 * 1024 * 1024, 1024 * 1024);
   z_ASSERT(ret == z_OK);
 
   z_Buffer k, v, vv;
@@ -54,9 +56,8 @@ int z_KVTest() {
   ret = z_KVDelete(&kv, k);
   z_ASSERT(ret == z_ERR_NOT_FOUND);
 
-  z_BufferDestory(&vv);
-  z_BufferDestory(&v);
-  z_BufferDestory(&k);
-  z_KVDestory(&kv);
-  return 0;
+  z_BufferDestroy(&vv);
+  z_BufferDestroy(&v);
+  z_BufferDestroy(&k);
+  z_KVDestroy(&kv);
 }

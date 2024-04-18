@@ -32,7 +32,7 @@ z_Error z_LogInit(char *path) {
   return z_OK;
 }
 
-void z_LogDestory() { fclose(z_log_file); }
+void z_LogDestroy() { fclose(z_log_file); }
 
 FILE *z_LogFile() {
   if (z_log_file == nullptr) {

@@ -26,7 +26,7 @@ bool z_BufferIsEqual(z_Buffer a, z_Buffer b) {
   return memcmp(a.Data, b.Data, a.Len) == 0;
 }
 
-void z_BufferDestory(z_Buffer *s) {
+void z_BufferDestroy(z_Buffer *s) {
   if (s == nullptr || s->Data == nullptr) {
     z_debug("s == nullptr || s->Data == nullptr");
     return;

@@ -97,14 +97,14 @@ bool z_kvrIsEqual(void *attr, z_MapCmpType type, z_Buffer str, z_ListRecord r) {
   ret = z_RecordKey(record, &k);
   if (ret != z_OK) {
     z_RecordFree(record);
-    z_BinLogFileReaderDestory(&rd);
+    z_BinLogFileReaderDestroy(&rd);
     return false;
   }
 
   ret = z_RecordValue(record, &v);
   if (ret != z_OK) {
     z_RecordFree(record);
-    z_BinLogFileReaderDestory(&rd);
+    z_BinLogFileReaderDestroy(&rd);
     return false;
   }
 
@@ -119,19 +119,19 @@ bool z_kvrIsEqual(void *attr, z_MapCmpType type, z_Buffer str, z_ListRecord r) {
   }
 
   z_RecordFree(record);
-  z_BinLogFileReaderDestory(&rd);
+  z_BinLogFileReaderDestroy(&rd);
 
   return isEqual;
 }
 
-void z_KVDestory(z_KV *kv) {
+void z_KVDestroy(z_KV *kv) {
   if (kv == nullptr) {
     z_debug("kv == nullptr");
     return;
   }
 
   z_MapDestroy(&kv->Map);
-  z_BinLogDestory(&kv->BinLog);
+  z_BinLogDestroy(&kv->BinLog);
 
   return;
 }
@@ -248,14 +248,14 @@ z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
 
   ret = z_BinLogFileReaderSet(&rd, offset);
   if (ret != z_OK) {
-    z_BinLogFileReaderDestory(&rd);
+    z_BinLogFileReaderDestroy(&rd);
     return ret;
   }
 
   z_Record *r = nullptr;
   ret = z_BinLogFileReaderGetRecord(&rd, &r);
   if (ret != z_OK) {
-    z_BinLogFileReaderDestory(&rd);
+    z_BinLogFileReaderDestroy(&rd);
     return ret;
   }
 
@@ -264,14 +264,14 @@ z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
   if (ret != z_OK) {
     z_error("z_RecordValue %d", ret);
     z_RecordFree(r);
-    z_BinLogFileReaderDestory(&rd);
+    z_BinLogFileReaderDestroy(&rd);
     return ret;
   }
 
   ret = z_BufferResetByBuffer(v, vv);
 
   z_RecordFree(r);
-  z_BinLogFileReaderDestory(&rd);
+  z_BinLogFileReaderDestroy(&rd);
 
   return ret;
 }
