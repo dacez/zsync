@@ -9,6 +9,7 @@ typedef enum {
   z_ERR_EXIST = 4,
   z_ERR_NOT_FOUND = 5,
   z_ERR_CONFLICT = 6,
+  z_ERR_CACHE_MISS = 7,
 } z_Error;
 
 #endif
