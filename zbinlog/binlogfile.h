@@ -77,9 +77,9 @@ z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, int8_t *data,
   return ret;
 }
 
-z_Error z_BinLogFileWriterAppendRecord(z_BinLogFileWriter *wr, z_Record *r,
+z_Error z_BinLogFileWriterAppendRecord(z_BinLogFileWriter *wr, z_BinlogRecord *r,
                                        int64_t *offset) {
-  return z_BinLogFileWriterWrite(wr, (int8_t *)r, z_RecordLen(r), offset);
+  return z_BinLogFileWriterWrite(wr, (int8_t *)r, z_BinlogRecordLen(r), offset);
 }
 
 typedef struct {
@@ -129,7 +129,7 @@ z_Error z_BinLogFileReaderRead(z_BinLogFileReader *rd, int8_t *data,
   return z_OK;
 }
 
-z_Error z_BinLogFileReaderGetRecord(z_BinLogFileReader *rd, z_Record **r) {
+z_Error z_BinLogFileReaderGetRecord(z_BinLogFileReader *rd, z_BinlogRecord **r) {
   if (rd == nullptr || r == nullptr) {
     z_error("rd == nullptr || r == nullptr");
     return z_ERR_INVALID_DATA;
@@ -137,28 +137,28 @@ z_Error z_BinLogFileReaderGetRecord(z_BinLogFileReader *rd, z_Record **r) {
 
   *r = nullptr;
 
-  z_Record record;
-  z_Error ret = z_BinLogFileReaderRead(rd, (int8_t *)&record, sizeof(z_Record));
+  z_BinlogRecord record;
+  z_Error ret = z_BinLogFileReaderRead(rd, (int8_t *)&record, sizeof(z_BinlogRecord));
   if (ret != z_OK) {
     z_error("z_BinLogFileReaderRead");
     return ret;
   }
 
-  int64_t len = z_RecordLen(&record);
-  z_Record *ret_record = z_RecordNewByLen(len);
+  int64_t len = z_BinlogRecordLen(&record);
+  z_BinlogRecord *ret_record = z_BinlogRecordNewByLen(len);
   *ret_record = record;
   ret = z_BinLogFileReaderRead(rd, (int8_t *)(ret_record + 1),
-                               len - sizeof(z_Record));
+                               len - sizeof(z_BinlogRecord));
   if (ret != z_OK) {
     z_error("z_BinLogFileReaderRead");
-    z_RecordFree(ret_record);
+    z_BinlogRecordFree(ret_record);
     return ret;
   }
 
-  ret = z_RecordCheck(ret_record);
+  ret = z_BinlogRecordCheck(ret_record);
   if (ret != z_OK) {
-    z_error("z_RecordCheck");
-    z_RecordFree(ret_record);
+    z_error("z_BinlogRecordCheck");
+    z_BinlogRecordFree(ret_record);
     return ret;
   }
 

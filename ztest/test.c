@@ -10,7 +10,7 @@ int main() {
 
   z_ASSERT(1);
   z_CHECK(1);
-  z_RecordTest();
+  z_BinlogRecordTest();
   z_TimeTest();
   z_LockTest();
   z_KVTest();

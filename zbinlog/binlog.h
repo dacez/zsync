@@ -6,7 +6,7 @@
 
 #include "zbinlog/binlogfile.h"
 
-typedef z_Error z_BinLogAfterWrite(void *, z_Record *, int64_t);
+typedef z_Error z_BinLogAfterWrite(void *, z_BinlogRecord *, int64_t);
 
 typedef struct {
   void *Attr;
@@ -48,7 +48,7 @@ z_Error z_BinLogInit(z_BinLog *bl, char *path, int64_t max_size, void *attr,
   return z_OK;
 }
 
-z_Error z_BinLogAppendRecord(z_BinLog *bl, z_Record *r) {
+z_Error z_BinLogAppendRecord(z_BinLog *bl, z_BinlogRecord *r) {
   z_LockLock(&bl->Lock);
   
   z_Error ret = z_OK;

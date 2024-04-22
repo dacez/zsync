@@ -15,7 +15,7 @@ typedef enum {
   z_RECORD_OP_DELETE = 2,
   z_RECORD_OP_UPDATE = 3,
   z_RECORD_OP_FORCE_UPDATE = 4,
-} z_RecordOP;
+} z_BinlogRecordOP;
 
 typedef struct {
   int64_t OP : 8;
@@ -23,17 +23,17 @@ typedef struct {
   uint64_t KeyLen : 16;
   uint64_t ValLen : 16;
   uint64_t NextLen : 16;
-} z_Record;
+} z_BinlogRecord;
 
-int64_t z_RecordLen(z_Record *r) {
+int64_t z_BinlogRecordLen(z_BinlogRecord *r) {
   if (r == nullptr) {
     z_error("r == nullptr");
     return 0;
   }
-  return r->KeyLen + r->ValLen + r->NextLen + sizeof(z_Record);
+  return r->KeyLen + r->ValLen + r->NextLen + sizeof(z_BinlogRecord);
 }
 
-z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
+z_Error z_BinlogRecordKey(z_BinlogRecord *r, z_Buffer *key) {
   if (r == nullptr || r->KeyLen == 0 || key == nullptr) {
     z_error("r == nullptr || r->KeyLen == 0 || key == nullptr");
     return z_ERR_INVALID_DATA;
@@ -45,7 +45,7 @@ z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
   return z_OK;
 }
 
-z_Error z_RecordValue(z_Record *r, z_Buffer *value) {
+z_Error z_BinlogRecordValue(z_BinlogRecord *r, z_Buffer *value) {
   if (r == nullptr || r->KeyLen == 0 || value == nullptr) {
     z_error("r == nullptr || r->KeyLen == 0 || value == nullptr");
     return z_ERR_INVALID_DATA;
@@ -57,7 +57,7 @@ z_Error z_RecordValue(z_Record *r, z_Buffer *value) {
   return z_OK;
 }
 
-z_Error z_RecordNext(z_Record *r, z_Buffer *value) {
+z_Error z_BinlogRecordNext(z_BinlogRecord *r, z_Buffer *value) {
   if (r == nullptr || r->KeyLen == 0 || value == nullptr) {
     z_error("r == nullptr || r->KeyLen == 0 || value == nullptr");
     return z_ERR_INVALID_DATA;
@@ -69,7 +69,7 @@ z_Error z_RecordNext(z_Record *r, z_Buffer *value) {
   return z_OK;
 }
 
-z_Error z_RecordCheck(z_Record *r) {
+z_Error z_BinlogRecordCheck(z_BinlogRecord *r) {
   if (r == nullptr) {
     z_error("r == nullptr");
     return z_ERR_INVALID_DATA;
@@ -77,7 +77,7 @@ z_Error z_RecordCheck(z_Record *r) {
 
   int8_t sum = r->Sum;
   r->Sum = 0;
-  int8_t s = (int8_t)z_Checksum((int8_t *)r, z_RecordLen(r));
+  int8_t s = (int8_t)z_Checksum((int8_t *)r, z_BinlogRecordLen(r));
   r->Sum = sum;
 
   if (s == sum) {
@@ -87,41 +87,41 @@ z_Error z_RecordCheck(z_Record *r) {
   return z_ERR_INVALID_DATA;
 }
 
-void z_RecordSum(z_Record *r) {
+void z_BinlogRecordSum(z_BinlogRecord *r) {
   if (r == nullptr) {
     z_error("r == nullptr");
     return;
   }
 
   r->Sum = 0;
-  int8_t s = (int8_t)z_Checksum((int8_t *)r, z_RecordLen(r));
+  int8_t s = (int8_t)z_Checksum((int8_t *)r, z_BinlogRecordLen(r));
   r->Sum = s;
 
   return;
 }
 
-z_Record *z_RecordNewByLen(int64_t len) {
-  if (len < sizeof(z_Record)) {
-    z_error("len %lld record_size %zu", len, sizeof(z_Record));
+z_BinlogRecord *z_BinlogRecordNewByLen(int64_t len) {
+  if (len < sizeof(z_BinlogRecord)) {
+    z_error("len %lld record_size %zu", len, sizeof(z_BinlogRecord));
     return nullptr;
   }
 
-  z_Record *r = z_malloc(len);
+  z_BinlogRecord *r = z_malloc(len);
   if (r == nullptr) {
     z_error("r == nullptr");
   }
   return r;
 }
 
-z_Record *z_RecordNew(int8_t op, z_Buffer key, z_Buffer val) {
+z_BinlogRecord *z_BinlogRecordNew(int8_t op, z_Buffer key, z_Buffer val) {
   if (key.Data == nullptr || key.Len == 0) {
     z_error("key.Data == nullptr || key.Len == 0");
     return nullptr;
   }
-  z_Record record = {
+  z_BinlogRecord record = {
       .OP = op, .KeyLen = key.Len, .ValLen = val.Len, .NextLen = 0};
-  int64_t len = z_RecordLen(&record);
-  z_Record *ret_record = z_RecordNewByLen(len);
+  int64_t len = z_BinlogRecordLen(&record);
+  z_BinlogRecord *ret_record = z_BinlogRecordNewByLen(len);
   if (ret_record == nullptr) {
     z_error("ret_record == nullptr");
     return nullptr;
@@ -130,21 +130,21 @@ z_Record *z_RecordNew(int8_t op, z_Buffer key, z_Buffer val) {
   *ret_record = record;
   memcpy(ret_record + 1, key.Data, key.Len);
   memcpy((int8_t *)(ret_record + 1) + key.Len, val.Data, val.Len);
-  z_RecordSum(ret_record);
+  z_BinlogRecordSum(ret_record);
 
   return ret_record;
 }
 
-z_Record *z_RecordNewByNext(int8_t op, z_Buffer key, z_Buffer val,
+z_BinlogRecord *z_BinlogRecordNewByNext(int8_t op, z_Buffer key, z_Buffer val,
                             z_Buffer next) {
   if (key.Data == nullptr || key.Len == 0) {
     z_error("key.Data == nullptr || key.Len == 0");
     return nullptr;
   }
-  z_Record record = {
+  z_BinlogRecord record = {
       .OP = op, .KeyLen = key.Len, .ValLen = val.Len, .NextLen = next.Len};
-  int64_t len = z_RecordLen(&record);
-  z_Record *ret_record = z_RecordNewByLen(len);
+  int64_t len = z_BinlogRecordLen(&record);
+  z_BinlogRecord *ret_record = z_BinlogRecordNewByLen(len);
   if (ret_record == nullptr) {
     z_error("ret_record == nullptr");
     return nullptr;
@@ -154,12 +154,12 @@ z_Record *z_RecordNewByNext(int8_t op, z_Buffer key, z_Buffer val,
   memcpy(ret_record + 1, key.Data, key.Len);
   memcpy((int8_t *)(ret_record + 1) + key.Len, val.Data, val.Len);
   memcpy((int8_t *)(ret_record + 1) + key.Len + val.Len, next.Data, next.Len);
-  z_RecordSum(ret_record);
+  z_BinlogRecordSum(ret_record);
 
   return ret_record;
 }
 
-void z_RecordFree(z_Record *r) {
+void z_BinlogRecordFree(z_BinlogRecord *r) {
   if (r == nullptr) {
     z_debug("r == nullptr");
     return;
