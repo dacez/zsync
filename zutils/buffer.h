@@ -81,4 +81,12 @@ z_Buffer z_BufferEmpty() {
   return buffer;
 }
 
+bool z_BufferIsEmpty(z_Buffer *b) {
+  if (b->Data == nullptr || b->Len == 0) {
+    return true;
+  }
+
+  return false;
+}
+
 #endif

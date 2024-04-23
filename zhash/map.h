@@ -16,13 +16,7 @@ typedef struct {
   int64_t Hash;
 } z_MapRecord;
 
-typedef enum {
-  Z_MAP_CMP_TYPE_KEY = 1,
-  Z_MAP_CMP_TYPE_VALUE = 2,
-} z_MapCmpType;
-
-typedef bool z_MapIsEqual(void *attr, z_MapCmpType type, z_Buffer str,
-                          z_MapRecord r);
+typedef bool z_MapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset);
 
 typedef struct {
   int16_t Pos;
@@ -100,7 +94,7 @@ z_Error z_ListInsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
       } else {
         z_debug("i %d hash %lld arg_offset %lld list_offset %lld", i, r.Hash,
                 r.Offset, l->Records[i].Offset);
-        if (isEqual(attr, Z_MAP_CMP_TYPE_KEY, k, r) == true) {
+        if (isEqual(attr, k, z_BufferEmpty(), r.Offset) == true) {
           char short_key[32] = {};
           z_CShortStr(k, short_key);
           z_debug("shortkey %s", short_key);
@@ -133,7 +127,7 @@ z_Error z_ListFind(z_List *l, z_Buffer k, int64_t hash, void *attr,
 
   for (int16_t i = 0; i < l->Pos; ++i) {
     if (l->Records[i].Hash == hash &&
-        isEqual(attr, Z_MAP_CMP_TYPE_KEY, k, l->Records[i]) == true) {
+        isEqual(attr, k, z_BufferEmpty(), l->Records[i].Offset) == true) {
       *res = &l->Records[i];
       return z_OK;
     }
@@ -176,7 +170,7 @@ z_Error z_ListUpdate(z_List *l, z_Buffer k, z_MapRecord r, z_Buffer src_v,
     return ret;
   }
 
-  if (isEqual(attr, Z_MAP_CMP_TYPE_VALUE, src_v, *res) == false) {
+  if (isEqual(attr, z_BufferEmpty(), src_v, res->Offset) == false) {
     char short_key[32];
     z_CShortStr(k, short_key);
     z_error("conflict shortkey %s", short_key);
@@ -198,7 +192,7 @@ z_Error z_ListDelete(z_List *l, z_Buffer k, int64_t hash, void *attr,
   int16_t ii = 0;
   for (int16_t i = 0; i < l->Pos; ++i) {
     if (l->Records[i].Hash != hash ||
-        isEqual(attr, Z_MAP_CMP_TYPE_KEY, k, l->Records[i]) != true) {
+        isEqual(attr, k, z_BufferEmpty(), l->Records[i].Offset) != true) {
       l->Records[ii] = l->Records[i];
       ++ii;
     }

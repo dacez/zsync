@@ -13,7 +13,6 @@
 
 typedef struct {
   int64_t MaxSize;
-  int64_t CurSize;
   FILE *File;
 } z_BinLogFileWriter;
 
@@ -24,7 +23,6 @@ z_Error z_BinLogFileWriterInit(z_BinLogFileWriter *wr, char *path,
     return z_ERR_INVALID_DATA;
   }
   wr->MaxSize = max_size;
-  wr->CurSize = 0;
 
   wr->File = fopen(path, "a");
   if (wr->File == nullptr) {
@@ -47,39 +45,62 @@ void z_BinLogFileWriterDestroy(z_BinLogFileWriter *wr) {
   }
 
   wr->MaxSize = 0;
-  wr->CurSize = 0;
 }
 
 z_Error z_BinLogFileWriterWrite(z_BinLogFileWriter *wr, int8_t *data,
                                 int64_t len, int64_t *offset) {
-  z_Error ret = z_OK;
-  if (wr->CurSize + len < wr->MaxSize) {
-    *offset = ftell(wr->File);
-    if (*offset < 0) {
-      z_error("ftell %lld", *offset);
+  *offset = ftell(wr->File);
+  if (*offset < 0) {
+    z_error("ftell %lld", *offset);
+    return z_ERR_SYS;
+  }
+
+  if (*offset + len < wr->MaxSize) {
+    if (fwrite(data, sizeof(int8_t), len, wr->File) != len) {
+      z_error("fwrite");
       return z_ERR_SYS;
     }
 
-    if (fwrite(data, sizeof(int8_t), len, wr->File) != len) {
-      z_error("fwrite");
-      ret = z_ERR_SYS;
-    }
     if (fflush(wr->File) != 0) {
       z_error("fflush");
     }
-    wr->CurSize += len;
-
   } else {
-    z_error("nospace current:%lld len:%lld max:%lld", wr->CurSize, len,
+    z_error("nospace current:%lld len:%lld max:%lld", *offset, len,
             wr->MaxSize);
-    ret = z_ERR_NOSPACE;
+    return z_ERR_NOSPACE;
   }
-  return ret;
+  return z_OK;
 }
 
-z_Error z_BinLogFileWriterAppendRecord(z_BinLogFileWriter *wr, z_BinlogRecord *r,
-                                       int64_t *offset) {
+z_Error z_BinLogFileWriterAppendRecord(z_BinLogFileWriter *wr,
+                                       z_BinlogRecord *r, int64_t *offset) {
   return z_BinLogFileWriterWrite(wr, (int8_t *)r, z_BinlogRecordLen(r), offset);
+}
+
+
+z_Error z_BinLogFileWriterOffset(z_BinLogFileWriter *wr, int64_t *offset) {
+  if (wr->File == nullptr) {
+    z_error("wr->File == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
+  *offset = ftell(wr->File);
+  if (*offset < 0) {
+    z_error("ftell %lld", *offset);
+    return z_ERR_SYS;
+  }
+
+  return z_OK;
+}
+
+bool z_BinLogFileWriterIsEmpty(z_BinLogFileWriter *wr) {
+  int64_t offset = 0;
+  z_Error ret = z_BinLogFileWriterOffset(wr, &offset);
+  if (ret != z_OK || offset == 0) {
+    return true;
+  }
+
+  return false;
 }
 
 typedef struct {
@@ -129,7 +150,8 @@ z_Error z_BinLogFileReaderRead(z_BinLogFileReader *rd, int8_t *data,
   return z_OK;
 }
 
-z_Error z_BinLogFileReaderGetRecord(z_BinLogFileReader *rd, z_BinlogRecord **r) {
+z_Error z_BinLogFileReaderGetRecord(z_BinLogFileReader *rd,
+                                    z_BinlogRecord **r) {
   if (rd == nullptr || r == nullptr) {
     z_error("rd == nullptr || r == nullptr");
     return z_ERR_INVALID_DATA;
@@ -138,7 +160,8 @@ z_Error z_BinLogFileReaderGetRecord(z_BinLogFileReader *rd, z_BinlogRecord **r) 
   *r = nullptr;
 
   z_BinlogRecord record;
-  z_Error ret = z_BinLogFileReaderRead(rd, (int8_t *)&record, sizeof(z_BinlogRecord));
+  z_Error ret =
+      z_BinLogFileReaderRead(rd, (int8_t *)&record, sizeof(z_BinlogRecord));
   if (ret != z_OK) {
     z_error("z_BinLogFileReaderRead");
     return ret;
@@ -182,4 +205,23 @@ z_Error z_BinLogFileReaderSet(z_BinLogFileReader *rd, int64_t offset) {
 z_Error z_BinLogFileReaderReset(z_BinLogFileReader *rd) {
   return z_BinLogFileReaderSet(rd, 0);
 }
+
+
+z_Error z_BinLogFileReaderOffset(z_BinLogFileReader *rd, int64_t *offset) {
+  if (rd->File == nullptr) {
+    z_error("rd->File == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
+  *offset = ftell(rd->File);
+  if (*offset < 0) {
+    z_error("ftell %lld", *offset);
+    return z_ERR_SYS;
+  }
+
+  return z_OK;
+}
+
+
+
 #endif

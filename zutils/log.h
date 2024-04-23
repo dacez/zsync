@@ -91,9 +91,10 @@ FILE *z_LogFile() {
     char tail_str[z_LOG_TAIL_LEN] = {};                                        \
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
     if (errno != 0) {                                                          \
-      snprintf(log_str, sizeof(log_str), "%s %s [error] %s:%d:%s:%s %s\n",     \
-               z_color_pink, time_str, __FILE__, __LINE__, tail_str,           \
-               strerror(errno), z_color_end);                                  \
+      snprintf(log_str, sizeof(log_str),                                       \
+               "%s %s [error] %s:%d:%s lastsyserror: %s %s\n", z_color_pink,   \
+               time_str, __FILE__, __LINE__, tail_str, strerror(errno),        \
+               z_color_end);                                                   \
     } else {                                                                   \
       snprintf(log_str, sizeof(log_str), "%s %s [error] %s:%d:%s %s\n",        \
                z_color_pink, time_str, __FILE__, __LINE__, tail_str,           \
@@ -111,8 +112,9 @@ FILE *z_LogFile() {
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
     if (errno != 0) {                                                          \
       snprintf(log_str, sizeof(log_str),                                       \
-               "%s %s [panic] %s:%d:%s:%s exit %s \n", z_color_red, time_str,  \
-               __FILE__, __LINE__, tail_str, strerror(errno), z_color_end);    \
+               "%s %s [panic] %s:%d:%s lastsyserror: %s exit %s \n",           \
+               z_color_red, time_str, __FILE__, __LINE__, tail_str,            \
+               strerror(errno), z_color_end);                                  \
     } else {                                                                   \
       snprintf(log_str, sizeof(log_str), "%s %s [panic] %s:%d:%s exit %s \n",  \
                z_color_red, time_str, __FILE__, __LINE__, tail_str,            \

@@ -1,3 +1,5 @@
+#define NDEBUG
+
 #include "ztest/test.h"
 
 #include "zbinlog/record_test.h"

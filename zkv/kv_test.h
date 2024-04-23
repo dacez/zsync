@@ -24,8 +24,8 @@ void z_KVTest() {
   z_ASSERT(ret == z_OK);
   z_ASSERT(z_BufferIsEqual(vv, v) == true);
 
-  z_BufferReset(&vv, (int8_t *)"value", strlen("value"));
   z_BufferReset(&v, (int8_t *)"value1", strlen("value1"));
+  z_BufferReset(&vv, (int8_t *)"value", strlen("value"));
   // current = value
   // vv = value
   ret = z_KVUpdate(&kv, k, v, vv);

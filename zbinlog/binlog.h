@@ -6,7 +6,7 @@
 
 #include "zbinlog/binlogfile.h"
 
-typedef z_Error z_BinLogAfterWrite(void *, z_BinlogRecord *, int64_t);
+typedef z_Error z_BinLogAfterWrite(void *, z_BinlogRecord *, int64_t, z_BinlogRecord *, int64_t);
 
 typedef struct {
   void *Attr;
@@ -54,7 +54,7 @@ z_Error z_BinLogAppendRecord(z_BinLog *bl, z_BinlogRecord *r) {
   z_Error ret = z_OK;
   int64_t offset = 0;
   if (z_BinLogFileWriterAppendRecord(&bl->Writer, r, &offset) == z_OK) {
-    ret = bl->AfterWrite(bl->Attr, r, offset);
+    ret = bl->AfterWrite(bl->Attr, r, offset, nullptr, 0);
     if (ret != z_OK) {
       z_error("AfterWrite");
     }
@@ -64,4 +64,36 @@ z_Error z_BinLogAppendRecord(z_BinLog *bl, z_BinlogRecord *r) {
   return ret;
 }
 
+z_Error z_BinLogAppendDoubleRecord(z_BinLog *bl, z_BinlogRecord *r1, z_BinlogRecord *r2) {
+  z_LockLock(&bl->Lock);
+  
+  z_Error ret = z_OK;
+  int64_t offset1 = 0;
+  int64_t offset2 = 0;
+  ret = z_BinLogFileWriterAppendRecord(&bl->Writer, r1, &offset1);
+  if (ret != z_OK) {
+    z_LockUnLock(&bl->Lock);
+    return ret;
+  }
+  
+  ret = z_BinLogFileWriterAppendRecord(&bl->Writer, r2, &offset2);
+  if (ret != z_OK) {
+    z_LockUnLock(&bl->Lock);
+    return ret;
+  }
+
+  ret = bl->AfterWrite(bl->Attr, r1, offset1, r2, offset2);
+  if (ret != z_OK) {
+    z_error("AfterWrite");
+    z_LockUnLock(&bl->Lock);
+    return ret;
+  }
+
+  z_LockUnLock(&bl->Lock);
+  return ret;
+}
+
+bool z_BinLogIsEmpty(z_BinLog *bl) {
+  return z_BinLogFileWriterIsEmpty(&bl->Writer);
+}
 #endif
