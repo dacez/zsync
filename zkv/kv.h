@@ -189,7 +189,7 @@ z_Error z_mapInitFromFile(z_Map *m, char *path) {
 
     ret = z_binLogAfterWrite((void*)m, r1, offset1, r2, offset2);
     if (ret != z_OK) {
-      break;
+      z_error("z_binLogAfterWrite %d", ret);
     }
 
     z_BinlogRecordFree(r1);
@@ -232,14 +232,19 @@ z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size,
 
   ret = z_MapInit(&kv->Map, kv->BucketsLen, kv->BinLogPath, z_mapIsEqual);
   if (ret != z_OK) {
+    z_BinLogDestroy(&kv->BinLog);
     return ret;
   }
 
-  if (z_BinLogIsEmpty(&kv->BinLog) == false) {
-    ret = z_mapInitFromFile(&kv->Map, kv->BinLogPath);
-    if (ret != z_OK) {
-      return ret;
-    }
+  if (z_BinLogIsEmpty(&kv->BinLog) == true) {
+    return z_OK;
+  }
+
+  ret = z_mapInitFromFile(&kv->Map, kv->BinLogPath);
+  if (ret != z_OK) {
+    z_BinLogDestroy(&kv->BinLog);
+    z_MapDestroy(&kv->Map);
+    return ret;
   }
 
   return z_OK;

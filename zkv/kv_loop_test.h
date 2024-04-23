@@ -314,7 +314,7 @@ void z_MutilThread() {
 void z_FromFile() {
   char *binlog_path = "./bin/binlog.log";
   remove(binlog_path);
-  int64_t count = 10000;
+  int64_t count = 2000;
 
   z_KV kv;
   z_Error ret =
@@ -326,13 +326,35 @@ void z_FromFile() {
 
   z_KVDestroy(&kv);
 
-  ret = z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 1024 * 128);
+  z_BinLogFileReader rd;
+  ret = z_BinLogFileReaderInit(&rd, binlog_path);
+  z_ASSERT(ret == z_OK);
+
+  while (1) {
+    int64_t offset = 0;
+    z_BinLogFileReaderOffset(&rd, &offset);
+
+    z_BinlogRecord *r;
+    ret = z_BinLogFileReaderGetRecord(&rd, &r);
+    if (ret != z_OK) {
+      break;
+    }
+
+    z_BinlogRecordFree(r);
+  }
+
+  z_BinLogFileReaderDestroy(&rd);
+
+
+  ret = z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 10);
   z_ASSERT(ret == z_OK);
   
-  //loop_ret = z_LoopCheck(&kv, 0, count);
-  //z_ASSERT(loop_ret == true);
+  loop_ret = z_LoopCheck(&kv, 0, count);
+  z_ASSERT(loop_ret == true);
 
   z_KVDestroy(&kv);
+
+
   return;
 } 
 void z_KVLoopTest() {
