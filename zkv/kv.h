@@ -424,4 +424,7 @@ z_Error z_KVDelete(z_KV *kv, z_Buffer k) {
   return ret;
 }
 
+z_Error z_KVMerge(char *src_path, char *des_path) {
+  return z_OK;
+}
 #endif
