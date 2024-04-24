@@ -5,11 +5,16 @@ typedef enum {
   z_OK = 0,
   z_ERR_INVALID_DATA = 1,
   z_ERR_NOSPACE = 2,
-  z_ERR_SYS = 3,
-  z_ERR_EXIST = 4,
-  z_ERR_NOT_FOUND = 5,
-  z_ERR_CONFLICT = 6,
-  z_ERR_CACHE_MISS = 7,
+  z_ERR_FS = 3,
+
+  z_ERR_EXIST = 1024,
+  z_ERR_NOT_FOUND = 1025,
+  z_ERR_CONFLICT = 1026,
+
+
+  z_ERR_CACHE_MISS = 2048,
 } z_Error;
+
+
 
 #endif

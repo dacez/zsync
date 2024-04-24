@@ -75,6 +75,36 @@ z_Error z_ListGrow(z_List *l) {
   return z_OK;
 }
 
+z_Error z_ListFind(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
+                   z_MapIsEqual *isEqual, z_MapRecord **record) {
+  if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
+      isEqual == nullptr || record == nullptr) {
+    z_error("l == nullptr || k.Data == nullptr || k.Len == 0 || attr == "
+            "nullptr || isEqual == nullptr || record == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
+  for (int16_t i = 0; i < l->Pos; ++i) {
+    if (l->Records[i].Hash == r.Hash) {
+      if (l->Records[i].Offset == r.Offset) {
+        z_debug("i %d hash %lld offset %lld", i, r.Hash, r.Offset);
+        *record = &l->Records[i];
+        return z_OK;
+      } else {
+        z_debug("i %d hash %lld arg_offset %lld list_offset %lld", i, r.Hash,
+                r.Offset, l->Records[i].Offset);
+        if (isEqual(attr, k, z_BufferEmpty(), l->Records[i].Offset) == true) {
+          *record = &l->Records[i];
+          return z_OK;
+        }
+      }
+    }
+  }
+
+  *record = nullptr;
+  return z_ERR_NOT_FOUND;
+}
+
 z_Error z_ListInsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
                      z_MapIsEqual *isEqual) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
@@ -85,23 +115,12 @@ z_Error z_ListInsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
   }
 
   z_Error ret = z_OK;
-
-  for (int16_t i = 0; i < l->Pos; ++i) {
-    if (l->Records[i].Hash == r.Hash) {
-      if (l->Records[i].Offset == r.Offset) {
-        z_debug("i %d hash %lld offset %lld", i, r.Hash, r.Offset);
-        return z_ERR_EXIST;
-      } else {
-        z_debug("i %d hash %lld arg_offset %lld list_offset %lld", i, r.Hash,
-                r.Offset, l->Records[i].Offset);
-        if (isEqual(attr, k, z_BufferEmpty(), r.Offset) == true) {
-          char short_key[32] = {};
-          z_CShortStr(k, short_key);
-          z_debug("shortkey %s", short_key);
-          return z_ERR_EXIST;
-        }
-      }
-    }
+  z_MapRecord *record;
+  ret = z_ListFind(l, k, r, attr, isEqual, &record);
+  if (ret == z_OK) {
+    return z_ERR_EXIST;
+  } else if (ret != z_ERR_NOT_FOUND) {
+    return ret;
   }
 
   if (l->Pos >= l->Len) {
@@ -113,28 +132,9 @@ z_Error z_ListInsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
   }
 
   l->Records[l->Pos++] = r;
-  return ret;
+  return z_OK;
 }
 
-z_Error z_ListFind(z_List *l, z_Buffer k, int64_t hash, void *attr,
-                   z_MapIsEqual *isEqual, z_MapRecord **res) {
-  if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
-      isEqual == nullptr || res == nullptr) {
-    z_error("l == nullptr || k.Data == nullptr || k.Len == 0 || attr == "
-            "nullptr || isEqual == nullptr || res == nullptr");
-    return z_ERR_INVALID_DATA;
-  }
-
-  for (int16_t i = 0; i < l->Pos; ++i) {
-    if (l->Records[i].Hash == hash &&
-        isEqual(attr, k, z_BufferEmpty(), l->Records[i].Offset) == true) {
-      *res = &l->Records[i];
-      return z_OK;
-    }
-  }
-
-  return z_ERR_NOT_FOUND;
-}
 
 z_Error z_ListForceUpdate(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
                           z_MapIsEqual *isEqual) {
@@ -145,13 +145,13 @@ z_Error z_ListForceUpdate(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
     return z_ERR_INVALID_DATA;
   }
 
-  z_MapRecord *res;
-  z_Error ret = z_ListFind(l, k, r.Hash, attr, isEqual, &res);
+  z_MapRecord *record;
+  z_Error ret = z_ListFind(l, k, r, attr, isEqual, &record);
   if (ret != z_OK) {
     return ret;
   }
 
-  *res = r;
+  *record = r;
   return z_OK;
 }
 
@@ -164,19 +164,17 @@ z_Error z_ListUpdate(z_List *l, z_Buffer k, z_MapRecord r, z_Buffer src_v,
     return z_ERR_INVALID_DATA;
   }
 
-  z_MapRecord *res;
-  z_Error ret = z_ListFind(l, k, r.Hash, attr, isEqual, &res);
+  z_MapRecord *record;
+  z_Error ret = z_ListFind(l, k, r, attr, isEqual, &record);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (isEqual(attr, z_BufferEmpty(), src_v, res->Offset) == false) {
-    char short_key[32];
-    z_CShortStr(k, short_key);
-    z_error("conflict shortkey %s", short_key);
+  if (isEqual(attr, z_BufferEmpty(), src_v, record->Offset) == false) {
     return z_ERR_CONFLICT;
   }
-  *res = r;
+
+  *record = r;
   return z_OK;
 }
 
@@ -266,7 +264,8 @@ z_Error z_BucketFind(z_Bucket *b, z_Buffer k, int64_t hash, void *attr,
   z_LockLock(&b->Lock);
 
   z_MapRecord *record;
-  z_Error ret = z_ListFind(&b->List, k, hash, attr, isEqual, &record);
+  z_MapRecord find_req = {.Hash = hash, .Offset = -1};
+  z_Error ret = z_ListFind(&b->List, k, find_req, attr, isEqual, &record);
   if (ret == z_OK) {
     *offset = record->Offset;
   }

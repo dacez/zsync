@@ -18,7 +18,7 @@ uint64_t z_Hash(int8_t *data, int64_t len) {
 
 uint8_t z_Checksum(int8_t *data, int64_t len) {
   uint64_t hash64 = z_Hash(data, len);
-  return (uint8_t)(hash64 & 0xFF);
+  return hash64 & 0xFF;
 }
 
 #endif

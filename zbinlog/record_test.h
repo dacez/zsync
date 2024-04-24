@@ -2,12 +2,12 @@
 
 #include "zbinlog/record.h"
 
-void z_BinlogRecordTest() {
-  z_BinlogRecord *r = z_BinlogRecordNewByLen(sizeof(z_BinlogRecord) - 1);
+void z_FileRecordTest() {
+  z_FileRecord *r = z_FileRecordNewByLen(sizeof(z_FileRecord) - 1);
   z_ASSERT(r == nullptr);
-  z_BinlogRecordFree(r);
+  z_FileRecordFree(r);
 
-  r = z_BinlogRecordNewByLen(sizeof(z_BinlogRecord));
+  r = z_FileRecordNewByLen(sizeof(z_FileRecord));
   z_ASSERT(r != nullptr);
-  z_BinlogRecordFree(r);
+  z_FileRecordFree(r);
 }

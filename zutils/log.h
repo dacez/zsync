@@ -21,7 +21,7 @@ const char *z_color_end = "\033[;0m";
 z_Error z_LogInit(char *path) {
   z_log_file = fopen(path, "a");
   if (z_log_file == nullptr) {
-    return z_ERR_SYS;
+    return z_ERR_FS;
   }
 
   z_color_yellow = "";
