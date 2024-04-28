@@ -28,7 +28,7 @@ bool z_KVSeqTestCheck() {
   return true;
 }
 
-void z_KVRestoreTest() {
+void z_KVSeqTest() {
   char *binlog_path = "./bin/binlog.log";
   remove(binlog_path);
   int64_t count = 2000;
@@ -44,6 +44,7 @@ void z_KVRestoreTest() {
   loop_ret = z_KVSeqTestCheck();
   z_ASSERT(loop_ret == true);
 
+  z_KVDestroy(&kv);
 
   return;
 } 

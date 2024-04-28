@@ -8,6 +8,8 @@
 #include "zutils/utils_test.h"
 #include "zkv/kv_cocurrent_test.h"
 #include "zkv/kv_restore_test.h"
+#include "zkv/kv_seq_test.h"
+#include "zepoch/epoch_test.h"
 
 int main() {
   z_LogInit("./bin/log.txt");
@@ -20,6 +22,9 @@ int main() {
   z_KVTest();
   z_KVCocurrentTest();
   z_KVRestoreTest();
+  z_KVSeqTestCheck();
+
+  z_EpochTest();
 
   z_LogDestroy();
 }
