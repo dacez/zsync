@@ -1,7 +1,7 @@
 #ifndef z_TEST_H
 #define z_TEST_H
-
-#include <stdio.h>
+#include <stdio.h> // IWYU pragma: export
+#include <stdlib.h>
 
 #define z_ASSERT(e)                                                            \
   {                                                                            \

@@ -4,8 +4,10 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
-#include <zutils/utils.h>
-#include <zerror/error.h>
+#include "zerror/error.h"
+#include "zutils/lock.h"
+#include "zutils/log.h"
+#include "zutils/mem.h"
 
 #define z_MAX_THREAD_COUNT 1024
 #define z_INVALID_THREAD_ID -1
@@ -57,7 +59,7 @@ z_Error z_ThreadIDInit(z_Threads *t) {
 
   if (z_thread_id != z_INVALID_THREAD_ID) {
     z_error("z_thread_id(%lld) != z_INVALID_THREAD_ID", z_thread_id);
-    return z_ERR_INVALID_DATA;    
+    return z_ERR_INVALID_DATA;
   }
 
   for (int64_t i = 0; i < z_MAX_THREAD_COUNT; ++i) {
@@ -71,22 +73,20 @@ z_Error z_ThreadIDInit(z_Threads *t) {
     z_error("no more threadid");
     return z_ERR_NOSPACE;
   }
-  
+
   return z_OK;
 }
 
 void z_ThreadIDDestory(z_Threads *t) {
   if (t == nullptr || z_thread_id == z_INVALID_THREAD_ID) {
     z_error("t == nullptr || z_thread_id == z_INVALID_THREAD_ID");
-    return;    
+    return;
   }
 
   z_LockUnLock(&t->Locks[z_thread_id]);
 }
 
-int64_t z_ThreadID() {
-  return z_thread_id;
-}
+int64_t z_ThreadID() { return z_thread_id; }
 
 typedef z_Error z_EpochFunc(void *, uint64_t);
 
@@ -123,20 +123,17 @@ void z_EpochDestory(z_Epoch *e) {
 
 z_Error z_EpochInit(z_Epoch *e) {
   if (e == nullptr) {
-    z_error("e == nullptr")
-    return z_ERR_INVALID_DATA;
+    z_error("e == nullptr") return z_ERR_INVALID_DATA;
   }
   atomic_store(&e->CurrentEpoch, 0);
   e->LocalEpochs = z_malloc(sizeof(atomic_int_fast64_t) * z_MAX_THREAD_COUNT);
   if (e->LocalEpochs == nullptr) {
-    z_error("e->LocalEpochs == nullptr")
-    return z_ERR_NOSPACE;
+    z_error("e->LocalEpochs == nullptr") return z_ERR_NOSPACE;
   }
 
   e->Actions = z_malloc(sizeof(z_EpochAction) * z_MAX_EPOCH_ACTION_COUNT);
   if (e->Actions == nullptr) {
-    z_error("e->Actions == nullptr")
-    z_EpochDestory(e);
+    z_error("e->Actions == nullptr") z_EpochDestory(e);
     return z_ERR_NOSPACE;
   }
 
@@ -153,7 +150,6 @@ z_Error z_EpochInit(z_Epoch *e) {
 
   return z_OK;
 }
-
 
 z_Error z_EpochProtect(z_Epoch *e) {
   if (e == nullptr) {
@@ -187,7 +183,7 @@ z_Error z_EpochSafe(z_Epoch *e, int64_t *se) {
     }
   }
 
-  return z_OK;  
+  return z_OK;
 }
 
 z_Error z_EpochRunActions(z_Epoch *e) {
@@ -222,7 +218,7 @@ z_Error z_EpochRunActions(z_Epoch *e) {
 z_Error z_EpohBump(z_Epoch *e, z_EpochAction action) {
   if (e == nullptr || action.Func == nullptr) {
     z_error("e == nullptr || se == nullptr");
-    return z_ERR_INVALID_DATA;    
+    return z_ERR_INVALID_DATA;
   }
 
   int64_t current_epoch = atomic_fetch_add(&e->CurrentEpoch, 1);
@@ -233,10 +229,11 @@ z_Error z_EpohBump(z_Epoch *e, z_EpochAction action) {
     return ret;
   }
 
-  for (int64_t i = 0; i < z_MAX_EPOCH_ACTION_COUNT ; ++i) {
+  for (int64_t i = 0; i < z_MAX_EPOCH_ACTION_COUNT; ++i) {
     int64_t action_epoch = atomic_load(&e->Actions[i].Epoch);
     if (action_epoch == z_INVALID_EPOCH) {
-      if (atomic_compare_exchange_strong(&e->Actions[i].Epoch, &action_epoch, current_epoch) == true) {
+      if (atomic_compare_exchange_strong(&e->Actions[i].Epoch, &action_epoch,
+                                         current_epoch) == true) {
         e->Actions[i].Attr = action.Attr;
         e->Actions[i].Addr = action.Addr;
         e->Actions[i].Func = action.Func;

@@ -1,6 +1,7 @@
 #include <pthread.h>
 
 #include "zkv/kv_loop_test.h"
+#include "ztest/test.h"
 
 void z_OneThread() {
   char *binlog_path = "./bin/binlog.log";
@@ -26,8 +27,8 @@ typedef struct {
   pthread_t tid;
 } z_Arg;
 
-void* z_KVThreadFunc(void *ptr) {
-  z_Arg *arg = (z_Arg*)ptr;
+void *z_KVThreadFunc(void *ptr) {
+  z_Arg *arg = (z_Arg *)ptr;
   arg->ret = z_Loop(arg->kv, arg->start, arg->count);
   return nullptr;
 }
@@ -40,8 +41,7 @@ void z_MutilThread() {
   char *binlog_path = "./bin/binlog.log";
   remove(binlog_path);
   z_KV kv;
-  z_Error ret =
-      z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 10240);
+  z_Error ret = z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 10240);
   z_ASSERT(ret == z_OK);
 
   z_Arg *args = z_malloc(sizeof(z_Arg) * thread_count);
@@ -66,7 +66,8 @@ void z_MutilThread() {
 
   bool func_ret = true;
   for (int i = 0; i < thread_count; i++) {
-    if (args[i].ret == false) func_ret = false;
+    if (args[i].ret == false)
+      func_ret = false;
   }
 
   z_ASSERT(func_ret == true);

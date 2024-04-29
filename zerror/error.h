@@ -11,10 +11,7 @@ typedef enum {
   z_ERR_NOT_FOUND = 1025,
   z_ERR_CONFLICT = 1026,
 
-
   z_ERR_CACHE_MISS = 2048,
 } z_Error;
-
-
 
 #endif

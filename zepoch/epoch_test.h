@@ -1,12 +1,11 @@
-#include "ztest/test.h"
 #include "zepoch/epoch.h"
-
+#include "ztest/test.h"
 
 void z_EpochTest() {
   z_Epoch e;
   z_Error ret = z_EpochInit(&e);
   z_ASSERT(ret == z_OK);
-  
+
   z_Threads ts;
   ret = z_ThreadsInit(&ts);
   z_ASSERT(ret == z_OK);

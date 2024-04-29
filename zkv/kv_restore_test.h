@@ -1,4 +1,5 @@
 #include "zkv/kv_loop_test.h"
+#include "ztest/test.h"
 
 bool z_KVRestoreTestCheck(z_KV *kv, int64_t start, int64_t count) {
   bool final_ret = true;
@@ -30,10 +31,10 @@ void z_KVRestoreTest() {
 
   ret = z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 10);
   z_ASSERT(ret == z_OK);
-  
+
   loop_ret = z_KVRestoreTestCheck(&kv, 0, count);
   z_ASSERT(loop_ret == true);
 
   z_KVDestroy(&kv);
   return;
-} 
+}

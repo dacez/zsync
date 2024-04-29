@@ -3,21 +3,16 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "zerror/error.h"
-#include "zutils/utils.h"
 
 #include "zbinlog/record.h"
+#include "zerror/error.h"
 
 typedef struct {
   int64_t MaxSize;
   FILE *File;
 } z_Writer;
 
-z_Error z_WriterInit(z_Writer *wr, char *path,
-                               int64_t max_size) {
+z_Error z_WriterInit(z_Writer *wr, char *path, int64_t max_size) {
   if (wr == nullptr || path == nullptr || max_size == 0) {
     z_error("wr == nullptr || path == nullptr || max_size == 0");
     return z_ERR_INVALID_DATA;
@@ -47,8 +42,8 @@ void z_WriterDestroy(z_Writer *wr) {
   wr->MaxSize = 0;
 }
 
-z_Error z_WriterWrite(z_Writer *wr, int8_t *data,
-                                int64_t len, int64_t *offset) {
+z_Error z_WriterWrite(z_Writer *wr, int8_t *data, int64_t len,
+                      int64_t *offset) {
   *offset = ftell(wr->File);
   if (*offset < 0) {
     z_error("ftell %lld", *offset);
@@ -72,11 +67,9 @@ z_Error z_WriterWrite(z_Writer *wr, int8_t *data,
   return z_OK;
 }
 
-z_Error z_WriterAppendRecord(z_Writer *wr,
-                                       z_FileRecord *r, int64_t *offset) {
+z_Error z_WriterAppendRecord(z_Writer *wr, z_FileRecord *r, int64_t *offset) {
   return z_WriterWrite(wr, (int8_t *)r, z_FileRecordLen(r), offset);
 }
-
 
 z_Error z_WriterOffset(z_Writer *wr, int64_t *offset) {
   if (wr->File == nullptr) {
@@ -134,8 +127,7 @@ void z_ReaderDestroy(z_Reader *rd) {
   }
 }
 
-z_Error z_ReaderRead(z_Reader *rd, int8_t *data,
-                               int64_t len) {
+z_Error z_ReaderRead(z_Reader *rd, int8_t *data, int64_t len) {
   if (rd == nullptr || data == nullptr || len == 0) {
     z_error("rd == nullptr || data == nullptr || len == 0");
     return z_ERR_INVALID_DATA;
@@ -150,8 +142,7 @@ z_Error z_ReaderRead(z_Reader *rd, int8_t *data,
   return z_OK;
 }
 
-z_Error z_ReaderGetRecord(z_Reader *rd,
-                                    z_FileRecord **r) {
+z_Error z_ReaderGetRecord(z_Reader *rd, z_FileRecord **r) {
   if (rd == nullptr || r == nullptr) {
     z_error("rd == nullptr || r == nullptr");
     return z_ERR_INVALID_DATA;
@@ -160,8 +151,7 @@ z_Error z_ReaderGetRecord(z_Reader *rd,
   *r = nullptr;
 
   z_FileRecord record;
-  z_Error ret =
-      z_ReaderRead(rd, (int8_t *)&record, sizeof(z_FileRecord));
+  z_Error ret = z_ReaderRead(rd, (int8_t *)&record, sizeof(z_FileRecord));
   if (ret != z_OK) {
     z_error("z_ReaderRead");
     return ret;
@@ -170,8 +160,8 @@ z_Error z_ReaderGetRecord(z_Reader *rd,
   int64_t len = z_FileRecordLen(&record);
   z_FileRecord *ret_record = z_FileRecordNewByLen(len);
   *ret_record = record;
-  ret = z_ReaderRead(rd, (int8_t *)(ret_record + 1),
-                               len - sizeof(z_FileRecord));
+  ret =
+      z_ReaderRead(rd, (int8_t *)(ret_record + 1), len - sizeof(z_FileRecord));
   if (ret != z_OK) {
     z_error("z_ReaderRead");
     z_FileRecordFree(ret_record);
@@ -202,10 +192,7 @@ z_Error z_ReaderSet(z_Reader *rd, int64_t offset) {
   return z_OK;
 }
 
-z_Error z_ReaderReset(z_Reader *rd) {
-  return z_ReaderSet(rd, 0);
-}
-
+z_Error z_ReaderReset(z_Reader *rd) { return z_ReaderSet(rd, 0); }
 
 z_Error z_ReaderOffset(z_Reader *rd, int64_t *offset) {
   if (rd->File == nullptr) {
@@ -221,7 +208,5 @@ z_Error z_ReaderOffset(z_Reader *rd, int64_t *offset) {
 
   return z_OK;
 }
-
-
 
 #endif

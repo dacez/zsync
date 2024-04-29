@@ -2,13 +2,11 @@
 #define z_RECORD_H
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "zerror/error.h"
-#include "zutils/utils.h"
-
 #include "zhash/hash.h"
+#include "zutils/buffer.h"
 
 typedef enum {
   z_RECORD_OP_INSERT = 1,
@@ -107,8 +105,7 @@ z_FileRecord *z_FileRecordNew(uint8_t op, z_Buffer key, z_Buffer val) {
     z_error("key.Data == nullptr || key.Len == 0");
     return nullptr;
   }
-  z_FileRecord record = {
-      .OP = op, .KeyLen = key.Len, .ValLen = val.Len};
+  z_FileRecord record = {.OP = op, .KeyLen = key.Len, .ValLen = val.Len};
   int64_t len = z_FileRecordLen(&record);
   z_FileRecord *ret_record = z_FileRecordNewByLen(len);
   if (ret_record == nullptr) {

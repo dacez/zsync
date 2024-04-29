@@ -1,4 +1,5 @@
 #include "zkv/kv_loop_test.h"
+#include "ztest/test.h"
 
 bool z_KVSeqTestCheck() {
   char *binlog_path = "./bin/binlog.log";
@@ -7,7 +8,7 @@ bool z_KVSeqTestCheck() {
   z_ASSERT(ret == z_OK);
 
   int64_t seq = 1;
-  while(1) {
+  while (1) {
     z_FileRecord *r;
     ret = z_ReaderGetRecord(&rd, &r);
     if (ret != z_OK) {
@@ -47,4 +48,4 @@ void z_KVSeqTest() {
   z_KVDestroy(&kv);
 
   return;
-} 
+}

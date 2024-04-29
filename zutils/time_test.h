@@ -1,5 +1,5 @@
 #include "ztest/test.h"
-#include "zutils/utils.h"
+#include "zutils/time.h"
 
 void z_TimeTest() {
   z_CHECK(z_NowMS() > 0 && z_NowNS() > 0 && z_NowS > 0);

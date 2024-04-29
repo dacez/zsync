@@ -3,13 +3,13 @@
 #include "ztest/test.h"
 
 #include "zbinlog/record_test.h"
-#include "zkv/kv_loop_test.h"
-#include "zkv/kv_test.h"
-#include "zutils/utils_test.h"
+#include "zepoch/epoch_test.h"
 #include "zkv/kv_cocurrent_test.h"
 #include "zkv/kv_restore_test.h"
 #include "zkv/kv_seq_test.h"
-#include "zepoch/epoch_test.h"
+#include "zkv/kv_test.h"
+#include "zutils/lock_test.h"
+#include "zutils/time_test.h"
 
 int main() {
   z_LogInit("./bin/log.txt");

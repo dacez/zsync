@@ -1,8 +1,11 @@
 #ifndef z_CACHE_H
 #define z_CACHE_H
-#include "zutils/utils.h"
-#include <stdatomic.h>
 
+#include "zerror/error.h"
+#include "zutils/log.h"
+#include "zutils/mem.h"
+
+#include <stdatomic.h>
 
 typedef struct {
   int64_t Len;
@@ -52,7 +55,8 @@ void z_CacheDestory(z_Cache *cache) {
   cache->Size = 0;
 }
 
-z_Error z_CacheAdd(z_Cache *cache, int8_t *data, int64_t len, uint64_t *offset) {
+z_Error z_CacheAdd(z_Cache *cache, int8_t *data, int64_t len,
+                   uint64_t *offset) {
   if (cache == nullptr || data == nullptr || len == 0 || offset == nullptr) {
     z_error(
         "cache == nullptr || data == nullptr || len == 0 || offset == nullptr");
@@ -120,8 +124,7 @@ void z_CacheUnused(z_Cache *cache) {
 
   z_CacheRecord *cr = (z_CacheRecord *)(cache->Data + unused % cache->Size);
   uint64_t des = unused + cr->Len + sizeof(z_CacheRecord);
-  bool ret = atomic_compare_exchange_strong(
-      &cache->Unused, &unused, des);
+  bool ret = atomic_compare_exchange_strong(&cache->Unused, &unused, des);
   if (ret == false) {
     z_error("unused %llu", unused);
   }
@@ -139,7 +142,9 @@ void z_CacheRemove(z_Cache *cache, uint64_t unused) {
   uint64_t cache_unused = atomic_load(&cache->Unused);
 
   if (unused > cache_unused || start > unused) {
-    z_error("unused > cache_unused || start > unused start %llu unused %llu cache_unused %llu", start, unused, cache_unused);
+    z_error("unused > cache_unused || start > unused start %llu unused %llu "
+            "cache_unused %llu",
+            start, unused, cache_unused);
     return;
   }
 
@@ -158,8 +163,8 @@ void z_CacheRemove(z_Cache *cache, uint64_t unused) {
     }
 
     uint64_t des = start + cr->Len + sizeof(z_CacheRecord);
-    bool atomic_ret = atomic_compare_exchange_strong(
-        &cache->Start, &start, des);
+    bool atomic_ret =
+        atomic_compare_exchange_strong(&cache->Start, &start, des);
     if (atomic_ret == false) {
       z_error("start %llu", start);
     }

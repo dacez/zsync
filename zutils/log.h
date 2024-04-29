@@ -4,10 +4,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "zerror/error.h"
-#include "zutils/time.h"
+#include "zutils/time.h" // IWYU pragma: export
 
 #define z_LOG_LEN 128
 #define z_LOG_TAIL_LEN 64

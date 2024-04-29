@@ -2,7 +2,6 @@
 #define z_KV_LOOP_TEST_H
 
 #include "zkv/kv.h"
-#include "ztest/test.h"
 
 bool z_Insert(z_KV *kv, int64_t i) {
   z_Buffer k, v;
