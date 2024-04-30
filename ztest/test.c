@@ -10,6 +10,7 @@
 #include "zkv/kv_test.h"
 #include "zutils/lock_test.h"
 #include "zutils/time_test.h"
+#include "zutils/defer_test.h"
 
 int main() {
   z_LogInit("./bin/log.txt");
@@ -23,8 +24,8 @@ int main() {
   z_KVCocurrentTest();
   z_KVRestoreTest();
   z_KVSeqTestCheck();
-
   z_EpochTest();
+  z_DeferTest();
 
   z_LogDestroy();
 }

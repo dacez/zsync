@@ -4,19 +4,18 @@
 #include <stdint.h>
 
 #include "zerror/error.h"
-#include "zhash/hash.h"
 #include "zutils/buffer.h"
 #include "zutils/lock.h"
+#include "zhash/hash.h"
 
-#define z_LIST_MAX_LEN 1024 * 16
+#define z_LIST_MAX_LEN 1024*16
 
 typedef struct {
   int64_t Offset;
   int64_t Hash;
 } z_MapRecord;
 
-typedef bool z_MapIsEqual(void *attr, z_Buffer key, z_Buffer value,
-                          int64_t offset);
+typedef bool z_MapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset);
 
 typedef struct {
   int16_t Pos;
@@ -134,6 +133,7 @@ z_Error z_ListInsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
   l->Records[l->Pos++] = r;
   return z_OK;
 }
+
 
 z_Error z_ListForceUpdate(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
                           z_MapIsEqual *isEqual) {
