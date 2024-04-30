@@ -30,8 +30,8 @@ static inline void z_defer_cleanup(void (^*b)(void)) { (*b)(); }
 #define z_defer1(f, a1) z_defer_func1(__COUNTER__, f, a1)
 #define z_defer2(f, a1, a2) z_defer_func2(__COUNTER__, f, a1, a2)
 
-#define z_defer_select(_0, _1, selected, ...) selected
+#define z_defer_select(_0, _1, _2, selected, ...) selected
 #define z_defer(f, ...)                                                        \
-  z_defer_select(__VA_ARGS__, z_defer2, z_defer1, z_defer0)(f, __VA_ARGS__)
-
+  z_defer_select(f, ##__VA_ARGS__, z_defer2, z_defer1,                         \
+                 z_defer0)(f, ##__VA_ARGS__)
 #endif
