@@ -9,11 +9,12 @@
 #include "zutils/buffer.h"
 
 typedef enum {
-  z_RECORD_OP_INSERT = 1,
-  z_RECORD_OP_DELETE = 2,
-  z_RECORD_OP_UPDATE = 3,
-  z_RECORD_OP_UPDATE_SRC_VALUE = 4,
-  z_RECORD_OP_FORCE_UPDATE = 5,
+  z_FILE_RECORD_OP_INSERT = 1,
+  z_FILE_RECORD_OP_DELETE = 2,
+  z_FILE_RECORD_OP_UPDATE = 3,
+  z_FILE_RECORD_OP_UPDATE_SRC_VALUE = 4,
+  z_FILE_RECORD_OP_FORCE_UPDATE = 5,
+  z_FILE_RECORD_OP_FORCE_UPSERT = 6,
 } z_FileRecordOP;
 
 typedef struct {

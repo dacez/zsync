@@ -2,6 +2,7 @@
 #define z_KV_H
 
 #include "zbinlog/binlog.h"
+#include "zbinlog/record.h"
 #include "zhash/map.h"
 
 #define z_MAX_PATH_LENGTH 1024
@@ -24,7 +25,7 @@ z_Error z_binLogAfterWrite(void *attr, z_FileRecord *r1, int64_t offset1,
   z_Map *m = (z_Map *)attr;
   z_Error ret = z_OK;
   switch (r1->OP) {
-  case z_RECORD_OP_INSERT: {
+  case z_FILE_RECORD_OP_INSERT: {
     if (r2 != nullptr) {
       z_error("r2 != nullptr");
       return z_ERR_INVALID_DATA;
@@ -37,7 +38,7 @@ z_Error z_binLogAfterWrite(void *attr, z_FileRecord *r1, int64_t offset1,
     }
     return z_MapInsert(m, k, offset1);
   }
-  case z_RECORD_OP_DELETE: {
+  case z_FILE_RECORD_OP_DELETE: {
     if (r2 != nullptr) {
       z_error("r2 != nullptr");
       return z_ERR_INVALID_DATA;
@@ -50,9 +51,9 @@ z_Error z_binLogAfterWrite(void *attr, z_FileRecord *r1, int64_t offset1,
     }
     return z_MapDelete(m, k);
   }
-  case z_RECORD_OP_UPDATE: {
-    if (r2 == nullptr || r2->OP != z_RECORD_OP_UPDATE_SRC_VALUE) {
-      z_error("r2 == nullptr || r2->OP != z_RECORD_OP_UPDATE_SRC_VALUE");
+  case z_FILE_RECORD_OP_UPDATE: {
+    if (r2 == nullptr || r2->OP != z_FILE_RECORD_OP_UPDATE_SRC_VALUE) {
+      z_error("r2 == nullptr || r2->OP != z_FILE_RECORD_OP_UPDATE_SRC_VALUE");
       return z_ERR_INVALID_DATA;
     }
     z_Buffer k;
@@ -68,12 +69,12 @@ z_Error z_binLogAfterWrite(void *attr, z_FileRecord *r1, int64_t offset1,
     return z_MapUpdate(m, k, offset1, src_v);
   }
 
-  case z_RECORD_OP_UPDATE_SRC_VALUE: {
+  case z_FILE_RECORD_OP_UPDATE_SRC_VALUE: {
     z_error("invalid op %d", r1->OP);
     return z_ERR_INVALID_DATA;
   }
 
-  case z_RECORD_OP_FORCE_UPDATE: {
+  case z_FILE_RECORD_OP_FORCE_UPDATE: {
     if (r2 != nullptr) {
       z_error("r2 != nullptr");
       return z_ERR_INVALID_DATA;
@@ -84,6 +85,19 @@ z_Error z_binLogAfterWrite(void *attr, z_FileRecord *r1, int64_t offset1,
       return ret;
     }
     return z_MapForceUpdate(m, k, offset1);
+  }
+
+  case z_FILE_RECORD_OP_FORCE_UPSERT: {
+    if (r2 != nullptr) {
+      z_error("r2 != nullptr");
+      return z_ERR_INVALID_DATA;
+    }
+    z_Buffer k;
+    ret = z_FileRecordKey(r1, &k);
+    if (ret != z_OK) {
+      return ret;
+    }
+    return z_MapForceUpsert(m, k, offset1);
   }
 
   default:
@@ -169,7 +183,7 @@ z_Error z_fileGetRecord(z_Reader *rd, z_FileRecord **r1, int64_t *offset1,
     return ret;
   }
 
-  if ((*r1)->OP == z_RECORD_OP_UPDATE) {
+  if ((*r1)->OP == z_FILE_RECORD_OP_UPDATE) {
     ret = z_ReaderOffset(rd, offset2);
     if (ret != z_OK) {
       return ret;
@@ -297,7 +311,7 @@ z_Error z_KVInsert(z_KV *kv, z_Buffer k, z_Buffer v) {
     return z_ERR_INVALID_DATA;
   }
 
-  z_FileRecord *r = z_FileRecordNew(z_RECORD_OP_INSERT, k, v);
+  z_FileRecord *r = z_FileRecordNew(z_FILE_RECORD_OP_INSERT, k, v);
   if (r == nullptr) {
     return z_ERR_NOSPACE;
   }
@@ -318,7 +332,29 @@ z_Error z_KVForceUpdate(z_KV *kv, z_Buffer k, z_Buffer v) {
     return z_ERR_INVALID_DATA;
   }
 
-  z_FileRecord *r = z_FileRecordNew(z_RECORD_OP_FORCE_UPDATE, k, v);
+  z_FileRecord *r = z_FileRecordNew(z_FILE_RECORD_OP_FORCE_UPDATE, k, v);
+  if (r == nullptr) {
+    z_error("z_FileRecordNew == nullptr");
+    return z_ERR_NOSPACE;
+  }
+
+  z_Error ret = z_BinLogAppendRecord(&kv->BinLog, r);
+  z_FileRecordFree(r);
+
+  if (ret != z_OK) {
+    return ret;
+  }
+
+  return ret;
+}
+
+z_Error z_KVForceUpsert(z_KV *kv, z_Buffer k, z_Buffer v) {
+  if (kv == nullptr) {
+    z_error("kv == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
+  z_FileRecord *r = z_FileRecordNew(z_FILE_RECORD_OP_FORCE_UPDATE, k, v);
   if (r == nullptr) {
     z_error("z_FileRecordNew == nullptr");
     return z_ERR_NOSPACE;
@@ -340,14 +376,14 @@ z_Error z_KVUpdate(z_KV *kv, z_Buffer k, z_Buffer v, z_Buffer src_v) {
     return z_ERR_INVALID_DATA;
   }
 
-  z_FileRecord *r1 = z_FileRecordNew(z_RECORD_OP_UPDATE, k, v);
+  z_FileRecord *r1 = z_FileRecordNew(z_FILE_RECORD_OP_UPDATE, k, v);
   if (r1 == nullptr) {
     z_error("z_FileRecordNew == nullptr");
     return z_ERR_NOSPACE;
   }
 
   z_Buffer vv = z_BufferEmpty();
-  z_FileRecord *r2 = z_FileRecordNew(z_RECORD_OP_UPDATE_SRC_VALUE, src_v, vv);
+  z_FileRecord *r2 = z_FileRecordNew(z_FILE_RECORD_OP_UPDATE_SRC_VALUE, src_v, vv);
   if (r2 == nullptr) {
     z_error("z_FileRecordNew == nullptr");
     z_FileRecordFree(r1);
@@ -417,7 +453,7 @@ z_Error z_KVDelete(z_KV *kv, z_Buffer k) {
   }
 
   z_Buffer v = {};
-  z_FileRecord *r = z_FileRecordNew(z_RECORD_OP_DELETE, k, v);
+  z_FileRecord *r = z_FileRecordNew(z_FILE_RECORD_OP_DELETE, k, v);
   if (r == nullptr) {
     return z_ERR_NOSPACE;
   }
