@@ -3,7 +3,7 @@
 
 #include "zbinlog/binlog.h"
 #include "zbinlog/record.h"
-#include "zhash/map.h"
+#include "zmap/map.h"
 
 #define z_MAX_PATH_LENGTH 1024
 

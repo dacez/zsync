@@ -1,39 +1,37 @@
-#ifndef z_FILE_RECORD_H
-#define z_FILE_RECORD_H
-
+#ifndef z_RECORD_H
+#define z_RECORD_H
 #include <stdint.h>
-#include <string.h>
-
-#include "zerror/error.h"
-#include "zutils/hash.h"
+#include "zutils/log.h"
 #include "zutils/buffer.h"
+#include "zutils/hash.h"
+#include "zutils/mem.h"
 
-typedef enum {
-  z_FILE_RECORD_OP_INSERT = 1,
-  z_FILE_RECORD_OP_DELETE = 2,
-  z_FILE_RECORD_OP_UPDATE = 3,
-  z_FILE_RECORD_OP_UPDATE_SRC_VALUE = 4,
-  z_FILE_RECORD_OP_FORCE_UPDATE = 5,
-  z_FILE_RECORD_OP_FORCE_UPSERT = 6,
-} z_FileRecordOP;
+typedef enum uint8_t {
+  z_ROP_INSERT = 1,
+  z_ROP_DELETE = 2,
+  z_ROP_UPDATE = 3,
+  z_ROP_UPDATE_SRC_VALUE = 4,
+  z_ROP_FORCE_UPDATE = 5,
+  z_ROP_FORCE_UPSERT = 6,
+} z_RecordOP;
 
 typedef struct {
-  int64_t Seq;
   uint64_t OP : 8;
   uint64_t Sum : 8;
   uint64_t KeyLen : 16;
   uint64_t ValLen : 24;
-} z_FileRecord;
+} z_Record;
 
-int64_t z_FileRecordLen(z_FileRecord *r) {
+
+int64_t z_RecordLen(z_Record *r) {
   if (r == nullptr) {
     z_error("r == nullptr");
     return 0;
   }
-  return r->KeyLen + r->ValLen + sizeof(z_FileRecord);
+  return r->KeyLen + r->ValLen + sizeof(z_Record);
 }
 
-z_Error z_FileRecordKey(z_FileRecord *r, z_Buffer *key) {
+z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
   if (r == nullptr || r->KeyLen == 0 || key == nullptr) {
     z_error("r == nullptr || r->KeyLen == 0 || key == nullptr");
     return z_ERR_INVALID_DATA;
@@ -45,7 +43,7 @@ z_Error z_FileRecordKey(z_FileRecord *r, z_Buffer *key) {
   return z_OK;
 }
 
-z_Error z_FileRecordValue(z_FileRecord *r, z_Buffer *value) {
+z_Error z_RecordValue(z_Record *r, z_Buffer *value) {
   if (r == nullptr || r->KeyLen == 0 || value == nullptr) {
     z_error("r == nullptr || r->KeyLen == 0 || value == nullptr");
     return z_ERR_INVALID_DATA;
@@ -57,7 +55,7 @@ z_Error z_FileRecordValue(z_FileRecord *r, z_Buffer *value) {
   return z_OK;
 }
 
-z_Error z_FileRecordCheck(z_FileRecord *r) {
+z_Error z_RecordCheck(z_Record *r) {
   if (r == nullptr) {
     z_error("r == nullptr");
     return z_ERR_INVALID_DATA;
@@ -65,7 +63,7 @@ z_Error z_FileRecordCheck(z_FileRecord *r) {
 
   uint8_t sum = r->Sum;
   r->Sum = 0;
-  uint8_t s = z_Checksum((int8_t *)r, z_FileRecordLen(r));
+  uint8_t s = z_Checksum((int8_t *)r, z_RecordLen(r));
   r->Sum = sum;
 
   if (s == sum) {
@@ -75,40 +73,40 @@ z_Error z_FileRecordCheck(z_FileRecord *r) {
   return z_ERR_INVALID_DATA;
 }
 
-void z_FileRecordSum(z_FileRecord *r) {
+void z_RecordSum(z_Record *r) {
   if (r == nullptr) {
     z_error("r == nullptr");
     return;
   }
 
   r->Sum = 0;
-  uint8_t s = z_Checksum((int8_t *)r, z_FileRecordLen(r));
+  uint8_t s = z_Checksum((int8_t *)r, z_RecordLen(r));
   r->Sum = s;
 
   return;
 }
 
-z_FileRecord *z_FileRecordNewByLen(int64_t len) {
-  if (len < sizeof(z_FileRecord)) {
-    z_error("len %lld record_size %zu", len, sizeof(z_FileRecord));
+z_Record *z_RecordNewByLen(int64_t len) {
+  if (len < sizeof(z_Record)) {
+    z_error("len %lld record_size %zu", len, sizeof(z_Record));
     return nullptr;
   }
 
-  z_FileRecord *r = z_malloc(len);
+  z_Record *r = z_malloc(len);
   if (r == nullptr) {
     z_error("r == nullptr");
   }
   return r;
 }
 
-z_FileRecord *z_FileRecordNew(uint8_t op, z_Buffer key, z_Buffer val) {
+z_Record *z_RecordNew(uint8_t op, z_Buffer key, z_Buffer val) {
   if (key.Data == nullptr || key.Len == 0) {
     z_error("key.Data == nullptr || key.Len == 0");
     return nullptr;
   }
-  z_FileRecord record = {.OP = op, .KeyLen = key.Len, .ValLen = val.Len};
-  int64_t len = z_FileRecordLen(&record);
-  z_FileRecord *ret_record = z_FileRecordNewByLen(len);
+  z_Record record = {.OP = op, .KeyLen = key.Len, .ValLen = val.Len};
+  int64_t len = z_RecordLen(&record);
+  z_Record *ret_record = z_RecordNewByLen(len);
   if (ret_record == nullptr) {
     z_error("ret_record == nullptr");
     return nullptr;
@@ -121,7 +119,7 @@ z_FileRecord *z_FileRecordNew(uint8_t op, z_Buffer key, z_Buffer val) {
   return ret_record;
 }
 
-void z_FileRecordFree(z_FileRecord *r) {
+void z_RecordFree(z_Record *r) {
   if (r == nullptr) {
     z_debug("r == nullptr");
     return;
@@ -129,5 +127,13 @@ void z_FileRecordFree(z_FileRecord *r) {
 
   z_free(r);
 }
+
+typedef struct {
+  union {
+    int64_t Seq;
+    int64_t Offset;
+  };
+  z_Record Record;
+} z_LogRecord;
 
 #endif

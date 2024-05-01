@@ -6,13 +6,13 @@
 #include "zerror/error.h"
 #include "zutils/buffer.h"
 #include "zutils/lock.h"
-#include "zhash/hash.h"
+#include "zutils/hash.h"
 
 #define z_LIST_MAX_LEN 1024*16
 
 typedef struct {
+  uint64_t Hash;
   int64_t Offset;
-  int64_t Hash;
 } z_MapRecord;
 
 typedef bool z_MapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset);
@@ -86,11 +86,11 @@ z_Error z_ListFind(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
   for (int16_t i = 0; i < l->Pos; ++i) {
     if (l->Records[i].Hash == r.Hash) {
       if (l->Records[i].Offset == r.Offset) {
-        z_debug("i %d hash %lld offset %lld", i, r.Hash, r.Offset);
+        z_debug("i %d hash %llu offset %lld", i, r.Hash, r.Offset);
         *record = &l->Records[i];
         return z_OK;
       } else {
-        z_debug("i %d hash %lld arg_offset %lld list_offset %lld", i, r.Hash,
+        z_debug("i %d hash %llu arg_offset %lld list_offset %lld", i, r.Hash,
                 r.Offset, l->Records[i].Offset);
         if (isEqual(attr, k, z_BufferEmpty(), l->Records[i].Offset) == true) {
           *record = &l->Records[i];
@@ -209,7 +209,7 @@ z_Error z_ListUpdate(z_List *l, z_Buffer k, z_MapRecord r, z_Buffer src_v,
   return z_OK;
 }
 
-z_Error z_ListDelete(z_List *l, z_Buffer k, int64_t hash, void *attr,
+z_Error z_ListDelete(z_List *l, z_Buffer k, uint64_t hash, void *attr,
                      z_MapIsEqual *isEqual) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -263,7 +263,7 @@ void z_BucketDestroy(z_Bucket *b) {
   return;
 }
 
-z_Error z_BucketInsert(z_Bucket *b, z_Buffer k, int64_t hash, int64_t offset,
+z_Error z_BucketInsert(z_Bucket *b, z_Buffer k, uint64_t hash, int64_t offset,
                        void *attr, z_MapIsEqual *isEqual) {
 
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
@@ -283,7 +283,7 @@ z_Error z_BucketInsert(z_Bucket *b, z_Buffer k, int64_t hash, int64_t offset,
   return ret;
 }
 
-z_Error z_BucketFind(z_Bucket *b, z_Buffer k, int64_t hash, void *attr,
+z_Error z_BucketFind(z_Bucket *b, z_Buffer k, uint64_t hash, void *attr,
                      z_MapIsEqual *isEqual, int64_t *offset) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr || offset == nullptr) {
@@ -306,7 +306,7 @@ z_Error z_BucketFind(z_Bucket *b, z_Buffer k, int64_t hash, void *attr,
   return ret;
 }
 
-z_Error z_BucketForceUpdate(z_Bucket *b, z_Buffer k, int64_t hash,
+z_Error z_BucketForceUpdate(z_Bucket *b, z_Buffer k, uint64_t hash,
                             int64_t offset, void *attr, z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -325,7 +325,7 @@ z_Error z_BucketForceUpdate(z_Bucket *b, z_Buffer k, int64_t hash,
   return ret;
 }
 
-z_Error z_BucketForceUpsert(z_Bucket *b, z_Buffer k, int64_t hash,
+z_Error z_BucketForceUpsert(z_Bucket *b, z_Buffer k, uint64_t hash,
                             int64_t offset, void *attr, z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -344,7 +344,7 @@ z_Error z_BucketForceUpsert(z_Bucket *b, z_Buffer k, int64_t hash,
   return ret;
 } 
 
-z_Error z_BucketUpdate(z_Bucket *b, z_Buffer k, int64_t hash, int64_t offset,
+z_Error z_BucketUpdate(z_Bucket *b, z_Buffer k, uint64_t hash, int64_t offset,
                        z_Buffer src_v, void *attr, z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -363,7 +363,7 @@ z_Error z_BucketUpdate(z_Bucket *b, z_Buffer k, int64_t hash, int64_t offset,
   return ret;
 }
 
-z_Error z_BucketDelete(z_Bucket *b, z_Buffer k, int64_t hash, void *attr,
+z_Error z_BucketDelete(z_Bucket *b, z_Buffer k, uint64_t hash, void *attr,
                        z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
