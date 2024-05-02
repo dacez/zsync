@@ -6,6 +6,7 @@ typedef enum {
   z_ERR_INVALID_DATA = 1,
   z_ERR_NOSPACE = 2,
   z_ERR_FS = 3,
+  z_ERR_NET = 4,
 
   z_ERR_EXIST = 1024,
   z_ERR_NOT_FOUND = 1025,
