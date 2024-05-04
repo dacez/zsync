@@ -9,29 +9,28 @@
 #include "zutils/log.h"
 #include "zutils/mem.h"
 
-#define z_MAX_THREAD_COUNT 1024
 #define z_INVALID_THREAD_ID -1
-
-#define z_MAX_EPOCH_ACTION_COUNT 1024
 #define z_INVALID_EPOCH -1
 
 thread_local int64_t z_thread_id = z_INVALID_THREAD_ID;
 
 typedef struct {
   z_Lock *Locks;
+  int64_t Len;
 } z_Threads;
 
-z_Error z_ThreadsInit(z_Threads *t) {
+z_Error z_ThreadsInit(z_Threads *t, int64_t len) {
   if (t == nullptr) {
     z_error("ts == nullptr");
     return z_ERR_INVALID_DATA;
   }
-  t->Locks = z_malloc(sizeof(z_Lock) * z_MAX_THREAD_COUNT);
+  t->Len = len;
+  t->Locks = z_malloc(sizeof(z_Lock) * t->Len);
   if (t->Locks == nullptr) {
     z_error("ts->Locks == nullptr");
     return z_ERR_NOSPACE;
   }
-  for (int64_t i = 0; i < z_MAX_THREAD_COUNT; ++i) {
+  for (int64_t i = 0; i < t->Len; ++i) {
     z_LockInit(&t->Locks[i]);
   }
 
@@ -44,7 +43,7 @@ void z_ThreadsDestory(z_Threads *t) {
     return;
   }
 
-  for (int64_t i = 0; i < z_MAX_THREAD_COUNT; ++i) {
+  for (int64_t i = 0; i < t->Len; ++i) {
     z_LockDestroy(&t->Locks[i]);
   }
 
@@ -62,7 +61,7 @@ z_Error z_ThreadIDInit(z_Threads *t) {
     return z_ERR_INVALID_DATA;
   }
 
-  for (int64_t i = 0; i < z_MAX_THREAD_COUNT; ++i) {
+  for (int64_t i = 0; i < t->Len; ++i) {
     if (z_LockTryLock(&t->Locks[i])) {
       z_thread_id = i;
       break;
@@ -101,6 +100,8 @@ typedef struct {
   atomic_int_fast64_t CurrentEpoch;
   atomic_int_fast64_t *LocalEpochs;
   z_EpochAction *Actions;
+  int64_t ActionsLen;
+  z_Threads *Ts;
 } z_Epoch;
 
 void z_EpochDestory(z_Epoch *e) {
@@ -121,27 +122,29 @@ void z_EpochDestory(z_Epoch *e) {
   return;
 }
 
-z_Error z_EpochInit(z_Epoch *e) {
+z_Error z_EpochInit(z_Epoch *e, int64_t action_len, z_Threads *ts) {
   if (e == nullptr) {
     z_error("e == nullptr") return z_ERR_INVALID_DATA;
   }
+  e->ActionsLen = action_len;
+  e->Ts = ts;
   atomic_store(&e->CurrentEpoch, 0);
-  e->LocalEpochs = z_malloc(sizeof(atomic_int_fast64_t) * z_MAX_THREAD_COUNT);
+  e->LocalEpochs = z_malloc(sizeof(atomic_int_fast64_t) * e->Ts->Len);
   if (e->LocalEpochs == nullptr) {
     z_error("e->LocalEpochs == nullptr") return z_ERR_NOSPACE;
   }
 
-  e->Actions = z_malloc(sizeof(z_EpochAction) * z_MAX_EPOCH_ACTION_COUNT);
+  e->Actions = z_malloc(sizeof(z_EpochAction) * e->ActionsLen);
   if (e->Actions == nullptr) {
     z_error("e->Actions == nullptr") z_EpochDestory(e);
     return z_ERR_NOSPACE;
   }
 
-  for (int64_t i = 0; i < z_MAX_THREAD_COUNT; ++i) {
+  for (int64_t i = 0; i < e->Ts->Len; ++i) {
     atomic_store(&e->LocalEpochs[i], z_INVALID_EPOCH);
   }
 
-  for (int64_t i = 0; i < z_MAX_EPOCH_ACTION_COUNT; ++i) {
+  for (int64_t i = 0; i < e->ActionsLen; ++i) {
     atomic_store(&e->Actions[i].Epoch, z_INVALID_EPOCH);
     e->Actions[i].Attr = nullptr;
     e->Actions[i].Addr = 0;
@@ -176,7 +179,7 @@ z_Error z_EpochSafe(z_Epoch *e, int64_t *se) {
   }
 
   *se = INT64_MAX;
-  for (int64_t i = 0; i < z_MAX_THREAD_COUNT; ++i) {
+  for (int64_t i = 0; i < e->Ts->Len; ++i) {
     int64_t le = atomic_load(&e->LocalEpochs[i]);
     if (le != -1 && le < *se) {
       *se = le;
@@ -198,7 +201,7 @@ z_Error z_EpochRunActions(z_Epoch *e) {
     return ret;
   }
 
-  for (int64_t i = 0; i < z_MAX_EPOCH_ACTION_COUNT; ++i) {
+  for (int64_t i = 0; i < e->ActionsLen; ++i) {
     int64_t action_epoch = atomic_load(&e->Actions[i].Epoch);
     if (action_epoch != z_INVALID_EPOCH && action_epoch < safe_epoch) {
       void *Attr = e->Actions[i].Attr;
@@ -229,7 +232,7 @@ z_Error z_EpohBump(z_Epoch *e, z_EpochAction action) {
     return ret;
   }
 
-  for (int64_t i = 0; i < z_MAX_EPOCH_ACTION_COUNT; ++i) {
+  for (int64_t i = 0; i < e->ActionsLen; ++i) {
     int64_t action_epoch = atomic_load(&e->Actions[i].Epoch);
     if (action_epoch == z_INVALID_EPOCH) {
       if (atomic_compare_exchange_strong(&e->Actions[i].Epoch, &action_epoch,

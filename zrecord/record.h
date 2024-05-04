@@ -18,6 +18,7 @@ typedef enum uint8_t {
 typedef struct {
   uint64_t OP : 8;
   uint64_t Sum : 8;
+  uint64_t Reserved :8;
   uint64_t KeyLen : 16;
   uint64_t ValLen : 24;
 } z_Record;
@@ -127,13 +128,5 @@ void z_RecordFree(z_Record *r) {
 
   z_free(r);
 }
-
-typedef struct {
-  union {
-    int64_t Seq;
-    int64_t Offset;
-  };
-  z_Record Record;
-} z_LogRecord;
 
 #endif
