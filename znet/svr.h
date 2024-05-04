@@ -6,20 +6,18 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <sys/_pthread/_pthread_t.h>
-#include <sys/_types/_socklen_t.h>
+#include <pthread.h>
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <pthread.h>
 
+#include "zepoch/epoch.h"
 #include "zerror/error.h"
 #include "znet/record.h"
 #include "zrecord/record.h"
+#include "zutils/defer.h"
 #include "zutils/log.h"
 #include "zutils/mem.h"
-#include "zepoch/epoch.h"
-#include "zutils/defer.h"
 
 #define z_IP_MAX_LEN 64
 #define z_KQUEUE_BACKLOG 8
@@ -27,20 +25,28 @@
 
 typedef z_Error z_Handle(void *attr, z_Record *record, z_Record **result);
 
+typedef struct sockaddr_in ipv4_addr;
+typedef struct sockaddr sock_addr;
+
 typedef struct {
   char IP[z_IP_MAX_LEN];
   uint16_t Port;
   void *Attr;
   z_Handle *Handle;
-  int64_t SvrSocket;
   int64_t KQueue;
   z_Epoch *Epoch;
 } z_Svr;
 
 void *z_IOProcess(void *ptr) {
-  z_Svr *svr = (z_Svr *) ptr;
+  if (ptr == nullptr) {
+    z_error("ptr == nullptr");
+    return nullptr;
+  }
+  z_Svr *svr = (z_Svr *)ptr;
   z_ThreadIDInit(svr->Epoch->Ts);
   z_defer(z_ThreadIDDestory, svr->Epoch->Ts);
+
+  z_info("IOThread Start %lld", z_ThreadID());
   while (1) {
     struct kevent events[z_KQUEUE_BACKLOG] = {};
     int64_t ev_count =
@@ -79,8 +85,13 @@ void *z_IOProcess(void *ptr) {
   return nullptr;
 }
 
-z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch, void *attr,
-                  z_Handle *handle) {
+z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
+                 void *attr, z_Handle *handle) {
+  if (svr == nullptr || port == 0 || epoch == nullptr || handle == nullptr) {
+    z_error(
+        "svr == nullptr || port == 0 || epoch == nullptr || handle == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
   memset(svr->IP, 0, z_IP_MAX_LEN);
   strncpy(svr->IP, ip, z_IP_MAX_LEN - 1);
   svr->Port = port;
@@ -88,25 +99,25 @@ z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch, voi
   svr->Handle = handle;
   svr->Epoch = epoch;
 
-  svr->SvrSocket = socket(AF_INET, SOCK_STREAM, 0);
-  if (svr->SvrSocket < 0) {
-    z_error("svr->SvrSocket < 0 %lld", svr->SvrSocket);
+  int64_t svr_sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (svr_sock < 0) {
+    z_error("svr_sock < 0 %lld", svr_sock);
     return z_ERR_NET;
   }
 
-  struct sockaddr_in svr_ipv4;
-  memset(&svr_ipv4, 0, sizeof(svr_ipv4));
-  svr_ipv4.sin_family = AF_INET;
-  svr_ipv4.sin_addr.s_addr = inet_addr(svr->IP);
-  svr_ipv4.sin_port = htons(svr->Port);
+  ipv4_addr svr_ip;
+  memset(&svr_ip, 0, sizeof(svr_ip));
+  svr_ip.sin_family = AF_INET;
+  svr_ip.sin_addr.s_addr =
+      strncmp("", svr->IP, z_IP_MAX_LEN) == 0 ? INADDR_ANY : inet_addr(svr->IP);
+  svr_ip.sin_port = htons(svr->Port);
 
-  if (bind(svr->SvrSocket, (struct sockaddr *)&svr_ipv4, sizeof(svr_ipv4)) <
-      0) {
+  if (bind(svr_sock, (sock_addr *)&svr_ip, sizeof(svr_ip)) < 0) {
     z_error("bind failed");
     return z_ERR_NET;
   }
 
-  if (listen(svr->SvrSocket, z_LISTEN_BACKLOG) < 0) {
+  if (listen(svr_sock, z_LISTEN_BACKLOG) < 0) {
     z_error("listen failed");
     return z_ERR_NET;
   }
@@ -118,28 +129,31 @@ z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch, voi
     return z_ERR_NET;
   }
 
-  z_info("server started on ip %s port %d\n", svr->IP, svr->Port);
+  z_info("server started on %s:%d", svr->IP, svr->Port);
   pthread_t *pids = z_malloc(sizeof(pthread_t) * svr->Epoch->Ts->Len);
-  z_defer(^(pthread_t * ps) {
-    if (ps != nullptr) {
-      z_free(ps);
-    }
-  }, pids);
+  z_defer(
+      ^(pthread_t *ps) {
+        if (ps != nullptr) {
+          z_free(ps);
+        }
+      },
+      pids);
+
   for (int64_t i = 0; i < svr->Epoch->Ts->Len; ++i) {
     pthread_create(&pids[i], nullptr, z_IOProcess, svr);
   }
 
   while (1) {
-    struct sockaddr cli_addr;
-    socklen_t cli_addr_len = sizeof(struct sockaddr);
-    int64_t cli_socket = accept(svr->SvrSocket, &cli_addr, &cli_addr_len);
+    sock_addr cli_addr;
+    socklen_t cli_addr_len = sizeof(sock_addr);
+    int64_t cli_socket = accept(svr_sock, &cli_addr, &cli_addr_len);
     if (cli_socket < 0) {
       z_error("cli_socket < 0 %lld", cli_socket);
-      return z_ERR_NET;
+      continue;
     }
 
-    struct sockaddr_in *ipv4 = (struct sockaddr_in *)&cli_addr;
-    z_info("new connection %s:%lld\n", inet_ntoa(ipv4->sin_addr),
+    ipv4_addr *ipv4 = (ipv4_addr *)&cli_addr;
+    z_info("new connection %s:%u", inet_ntoa(ipv4->sin_addr),
            ntohs(ipv4->sin_port));
 
     struct kevent ev;
@@ -149,6 +163,11 @@ z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch, voi
     }
   }
 
+  for (int64_t i = 0; i < svr->Epoch->Ts->Len; ++i) {
+    pthread_join(pids[i], nullptr);
+  }
+
+  close(svr_sock);
   return z_OK;
 }
 

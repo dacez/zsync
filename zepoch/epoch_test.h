@@ -2,12 +2,12 @@
 #include "ztest/test.h"
 
 void z_EpochTest() {
-  z_Epoch e;
-  z_Error ret = z_EpochInit(&e);
+  z_Threads ts;
+  z_Error ret = z_ThreadsInit(&ts, 1024);
   z_ASSERT(ret == z_OK);
 
-  z_Threads ts;
-  ret = z_ThreadsInit(&ts);
+  z_Epoch e;
+  ret = z_EpochInit(&e, 32, &ts);
   z_ASSERT(ret == z_OK);
 
   ret = z_ThreadIDInit(&ts);
