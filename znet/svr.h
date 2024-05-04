@@ -4,29 +4,16 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <sys/event.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
 #include "zepoch/epoch.h"
 #include "zerror/error.h"
 #include "znet/record.h"
+#include "znet/socket.h"
 #include "zrecord/record.h"
 #include "zutils/defer.h"
 #include "zutils/log.h"
 #include "zutils/mem.h"
 
-#define z_IP_MAX_LEN 64
-#define z_KQUEUE_BACKLOG 8
-#define z_LISTEN_BACKLOG 1024
-
 typedef z_Error z_Handle(void *attr, z_Record *record, z_Record **result);
-
-typedef struct sockaddr_in ipv4_addr;
-typedef struct sockaddr sock_addr;
 
 typedef struct {
   char IP[z_IP_MAX_LEN];
@@ -87,9 +74,10 @@ void *z_IOProcess(void *ptr) {
 
 z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
                  void *attr, z_Handle *handle) {
-  if (svr == nullptr || port == 0 || epoch == nullptr || handle == nullptr) {
-    z_error(
-        "svr == nullptr || port == 0 || epoch == nullptr || handle == nullptr");
+  if (svr == nullptr || ip == nullptr || port == 0 || epoch == nullptr ||
+      handle == nullptr) {
+    z_error("svr == nullptr || ip == nullptr || port == 0 || epoch == nullptr "
+            "|| handle == nullptr");
     return z_ERR_INVALID_DATA;
   }
   memset(svr->IP, 0, z_IP_MAX_LEN);
@@ -112,7 +100,7 @@ z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
       strncmp("", svr->IP, z_IP_MAX_LEN) == 0 ? INADDR_ANY : inet_addr(svr->IP);
   svr_ip.sin_port = htons(svr->Port);
 
-  if (bind(svr_sock, (sock_addr *)&svr_ip, sizeof(svr_ip)) < 0) {
+  if (bind(svr_sock, (sock_addr *)&svr_ip, sizeof(ipv4_addr)) < 0) {
     z_error("bind failed");
     return z_ERR_NET;
   }

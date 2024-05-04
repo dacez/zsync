@@ -10,6 +10,11 @@ typedef struct {
   z_Record Record;
 } z_Req;
 
+typedef struct {
+  z_Error ret;
+  z_Record Record;
+} z_Resp;
+
 int64_t z_ReqLen(z_Req *r) {
   return sizeof(z_Req) - sizeof(z_Record) + z_RecordLen(&r->Record);
 }
@@ -63,5 +68,4 @@ z_Error z_RecordToNet(int64_t cli_socket, z_Error ret, z_Record *r) {
 
   return z_OK;
 }
-
 #endif
