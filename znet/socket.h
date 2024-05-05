@@ -12,6 +12,8 @@
 #define z_KQUEUE_BACKLOG 8
 #define z_LISTEN_BACKLOG 1024
 
+#define z_INVALID_SOCKET -1
+
 typedef struct sockaddr_in ipv4_addr;
 typedef struct sockaddr sock_addr;
 

@@ -4,10 +4,12 @@
 #include "ztest/test.h"
 #include "znet/svr.h"
 #include "zepoch/epoch.h"
-#include "zutils/log.h"
+#include "zutils/buffer.h"
 
 z_Error z_TestHandle(void *attr, z_Record *req, z_Record **resp) {
-  z_info("tid %lld", z_ThreadID());
+  z_Buffer k = {};
+  z_Buffer v = {};
+  *resp = z_RecordNew(z_ROP_INSERT, k, v);
   return z_OK;
 }
 
@@ -24,6 +26,6 @@ void z_SvrTest() {
   z_ASSERT(ret == z_OK);
 
   z_Svr svr;
-  ret = z_SvrRun(&svr, "", 10226, &epoch, nullptr, z_TestHandle);
+  ret = z_SvrRun(&svr, "127.0.0.1", 12301, &epoch, nullptr, z_TestHandle);
   z_ASSERT(ret == z_OK);
 }

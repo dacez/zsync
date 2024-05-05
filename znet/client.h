@@ -2,18 +2,21 @@
 #define z_CLIENT_H
 #include <stdint.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "zerror/error.h"
 #include "znet/record.h"
+#include "zrecord/record.h"
+#include "zutils/buffer.h"
 #include "zutils/log.h"
 #include "zutils/mem.h"
 #include "znet/socket.h"
 #include "zutils/lock.h"
 #include "zutils/defer.h"
+#include "zutils/hash.h"
 
 typedef struct {
   z_Lock Lock;
-  int64_t Conn;
   int64_t Socket;
 } z_Conn;
 
@@ -33,18 +36,27 @@ z_Error z_CliInit(z_Cli *cli, const char *ip, uint16_t port, int64_t conns_len) 
   memset(cli->IP, 0, z_IP_MAX_LEN);
   strncpy(cli->IP, ip, z_IP_MAX_LEN - 1);
   cli->Port = port; 
+  cli->ConnsLen = conns_len;
 
-  cli->Conns = z_malloc(sizeof(int64_t) * cli->ConnsLen);
+  cli->Conns = z_malloc(sizeof(z_Conn) * cli->ConnsLen);
   for (int64_t i = 0; i < cli->ConnsLen; ++i) {
     z_LockInit(&cli->Conns[i].Lock);
+    cli->Conns[i].Socket = z_INVALID_SOCKET;
   }
   return z_OK;
 }
 
-z_Error z_CliGetConnect(z_Cli *cli, uint64_t hash, int64_t *index) {
-  int64_t i = hash % cli->ConnsLen;
-  if (cli->Conns[i].Conn >= 0 && cli->Conns[i].Socket >= 0) {
-    *index = i;
+void z_CliConnectDestory(z_Cli *cli, int64_t i) {
+  if (cli->Conns[i].Socket == z_INVALID_SOCKET) {
+    return;
+  }
+  
+  close(cli->Conns[i].Socket);
+  cli->Conns[i].Socket = z_INVALID_SOCKET;
+}
+
+z_Error z_CliConnect(z_Cli *cli, int64_t i) {
+  if (cli->Conns[i].Socket != z_INVALID_SOCKET) {
     return z_OK;
   }
 
@@ -60,11 +72,7 @@ z_Error z_CliGetConnect(z_Cli *cli, uint64_t hash, int64_t *index) {
   svr_ip.sin_addr.s_addr = inet_addr(cli->IP);
   svr_ip.sin_port = htons(cli->Port);
 
-  z_LockLock(&cli->Conns[i].Lock);
-  z_defer(z_LockUnLock, &cli->Conns[i].Lock);
-  cli->Conns[i].Conn =
-      connect(cli->Conns[i].Socket, (sock_addr *)&svr_ip, sizeof(ipv4_addr));
-  if (cli->Conns[i].Conn < 0) {
+  if (connect(cli->Conns[i].Socket, (sock_addr *)&svr_ip, sizeof(ipv4_addr)) != 0) {
     z_error("connect failed %s:%u", cli->IP, cli->Port);
     return z_ERR_NET;
   }
@@ -73,6 +81,35 @@ z_Error z_CliGetConnect(z_Cli *cli, uint64_t hash, int64_t *index) {
 }
 
 z_Error z_CliCall(z_Cli *cli, z_Req *req, z_Resp *resp) {
+  z_Buffer key;
+  z_Error ret = z_RecordKey(req->Record, &key);
+  if (ret != z_OK) {
+    return ret;
+  }
+  uint64_t hash = z_Hash(key.Data, key.Len);
+  int64_t i = hash % cli->ConnsLen;
+
+  z_LockLock(&cli->Conns[i].Lock);
+  z_defer(z_LockUnLock, &cli->Conns[i].Lock);
+
+  ret = z_CliConnect(cli, i);
+  if (ret != z_OK) {
+    z_CliConnectDestory(cli, i);
+    return ret;
+  }
+
+  ret = z_ReqToNet(cli->Conns[i].Socket, req);
+  if (ret != z_OK) {
+    z_CliConnectDestory(cli, i);
+    return ret;
+  }
+
+  ret = z_RespInitFromNet(cli->Conns[i].Socket, resp);
+  if (ret != z_OK) {
+    z_CliConnectDestory(cli, i);
+    return ret;
+  }
+  
   return z_OK;
 }
 
@@ -89,9 +126,7 @@ void z_CliDestory(z_Cli *cli) {
 
   for (int64_t i = 0;i < cli->ConnsLen; ++i) {
     z_LockDestroy(&cli->Conns[i].Lock);
-    if (cli->Conns[i].Conn >= 0) {
-      close(cli->Conns[i].Conn);
-    }
+    z_CliConnectDestory(cli, i);
   }
 
   z_free(cli->Conns);

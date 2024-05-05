@@ -13,10 +13,10 @@ typedef struct {
   int64_t Len;
 } z_Buffer;
 
-#define z_CShortStr(z_str, cstr)                                               \
+#define z_BufferStr(z_buffer, cstr)                                            \
   memset(cstr, 0, sizeof(cstr));                                               \
-  memcpy(cstr, z_str.Data,                                                     \
-         z_str.Len < sizeof(cstr) - 1 ? z_str.Len : sizeof(cstr) - 1);
+  memcpy(cstr, z_buffer.Data,                                                  \
+         z_buffer.Len < sizeof(cstr) - 1 ? z_buffer.Len : sizeof(cstr) - 1);
 
 bool z_BufferIsEqual(z_Buffer a, z_Buffer b) {
   if (a.Len != b.Len) {

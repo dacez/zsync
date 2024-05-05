@@ -45,8 +45,8 @@ z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
 }
 
 z_Error z_RecordValue(z_Record *r, z_Buffer *value) {
-  if (r == nullptr || r->KeyLen == 0 || value == nullptr) {
-    z_error("r == nullptr || r->KeyLen == 0 || value == nullptr");
+  if (r == nullptr || value == nullptr) {
+    z_error("r == nullptr || value == nullptr");
     return z_ERR_INVALID_DATA;
   }
 
@@ -101,10 +101,6 @@ z_Record *z_RecordNewByLen(int64_t len) {
 }
 
 z_Record *z_RecordNew(uint8_t op, z_Buffer key, z_Buffer val) {
-  if (key.Data == nullptr || key.Len == 0) {
-    z_error("key.Data == nullptr || key.Len == 0");
-    return nullptr;
-  }
   z_Record record = {.OP = op, .KeyLen = key.Len, .ValLen = val.Len};
   int64_t len = z_RecordLen(&record);
   z_Record *ret_record = z_RecordNewByLen(len);
@@ -114,8 +110,12 @@ z_Record *z_RecordNew(uint8_t op, z_Buffer key, z_Buffer val) {
   }
 
   *ret_record = record;
-  memcpy(ret_record + 1, key.Data, key.Len);
-  memcpy((int8_t *)(ret_record + 1) + key.Len, val.Data, val.Len);
+  if (key.Len > 0) {
+    memcpy(ret_record + 1, key.Data, key.Len);
+  }
+  if (val.Len > 0) {
+    memcpy((int8_t *)(ret_record + 1) + key.Len, val.Data, val.Len);
+  }
 
   return ret_record;
 }

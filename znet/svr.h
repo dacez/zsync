@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sys/event.h>
+#include <unistd.h>
 
 #include "zepoch/epoch.h"
 #include "zerror/error.h"
@@ -20,9 +22,29 @@ typedef struct {
   uint16_t Port;
   void *Attr;
   z_Handle *Handle;
-  int64_t KQueue;
+  int64_t *KQs;
   z_Epoch *Epoch;
 } z_Svr;
+
+z_Error z_SvrEventAdd(int64_t kq, int64_t cli_socket) {
+  struct kevent ev;
+  EV_SET(&ev, cli_socket, EVFILT_READ, EV_ADD, 0, 0, NULL);
+  if (kevent(kq, &ev, 1, NULL, 0, NULL) < 0) {
+    z_error("registering client socket for read events failed");
+    return z_ERR_NET;
+  }
+  return z_OK;
+}
+
+z_Error z_SvrEventDel(int64_t kq, int64_t cli_socket) {
+  struct kevent ev;
+  EV_SET(&ev, cli_socket, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+  if (kevent(kq, &ev, 1, NULL, 0, NULL) < 0) {
+    z_error("delete client socket for read events failed");
+    return z_ERR_NET;
+  }
+  return z_OK;
+}
 
 void *z_IOProcess(void *ptr) {
   if (ptr == nullptr) {
@@ -33,36 +55,47 @@ void *z_IOProcess(void *ptr) {
   z_ThreadIDInit(svr->Epoch->Ts);
   z_defer(z_ThreadIDDestory, svr->Epoch->Ts);
 
+  int64_t kq = svr->KQs[z_ThreadID()];
   z_info("IOThread Start %lld", z_ThreadID());
+
   while (1) {
     struct kevent events[z_KQUEUE_BACKLOG] = {};
-    int64_t ev_count =
-        kevent(svr->KQueue, NULL, 0, events, z_KQUEUE_BACKLOG, NULL);
+    int64_t ev_count = kevent(kq, NULL, 0, events, z_KQUEUE_BACKLOG, NULL);
     if (ev_count < 0) {
       z_error("kevent failed");
       break;
     }
+
     for (int64_t i = 0; i < ev_count; ++i) {
-      z_Req *req = nullptr;
-      z_defer(z_ReqDestory, req);
+      z_Req req = {};
+      z_defer(z_ReqDestory, &req);
 
       int64_t cli_socket = events[i].ident;
 
       z_Error ret = z_ReqInitFromNet(cli_socket, &req);
       if (ret != z_OK) {
+        z_error("z_ReqInitFromNet %d", ret);
+        if (z_SvrEventDel(kq, cli_socket) != z_OK) {
+          z_error("z_SvrEventDel");
+        }
         close(cli_socket);
         continue;
       }
 
-      z_Record *resp = nullptr;
-      z_defer(z_RecordFree, resp);
-      ret = svr->Handle(svr->Attr, &req->Record, &resp);
+      z_Resp resp = {};
+      z_defer(z_RespDestory, &resp);
+      ret = svr->Handle(svr->Attr, req.Record, &resp.Record);
       if (ret != z_OK) {
         z_debug("handle error %d", ret);
       }
 
-      ret = z_RecordToNet(cli_socket, ret, resp);
+      resp.ret = ret;
+      ret = z_RespToNet(cli_socket, &resp);
       if (ret != z_OK) {
+        z_error("z_RespToNet %d", ret);
+        if (z_SvrEventDel(kq, cli_socket) != z_OK) {
+          z_error("z_SvrEventDel");
+        }
         close(cli_socket);
         continue;
       }
@@ -88,6 +121,12 @@ z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
   svr->Epoch = epoch;
 
   int64_t svr_sock = socket(AF_INET, SOCK_STREAM, 0);
+  z_defer(
+      ^(int64_t s) {
+        close(s);
+      },
+      svr_sock);
+
   if (svr_sock < 0) {
     z_error("svr_sock < 0 %lld", svr_sock);
     return z_ERR_NET;
@@ -111,14 +150,32 @@ z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
   }
 
   // Create kqueue
-  svr->KQueue = kqueue();
-  if (svr->KQueue < 0) {
-    z_error("kqueue creation failed %lld", svr->KQueue);
-    return z_ERR_NET;
+  int64_t kqs_len = svr->Epoch->Ts->Len;
+  svr->KQs = z_malloc(kqs_len * sizeof(int64_t));
+  z_defer(
+      ^(int64_t *kqs) {
+        if (kqs != nullptr) {
+          z_free(kqs);
+        }
+      },
+      svr->KQs);
+
+  if (svr->KQs == nullptr) {
+    z_error("svr->KQs == nullptr");
+    return z_ERR_NOSPACE;
+  }
+
+  for (int64_t i = 0; i < kqs_len; ++i) {
+    svr->KQs[i] = kqueue();
+    if (svr->KQs[i] < 0) {
+      z_error("svr->KQs[i] < 0");
+      return z_ERR_NET;
+    }
   }
 
   z_info("server started on %s:%d", svr->IP, svr->Port);
-  pthread_t *pids = z_malloc(sizeof(pthread_t) * svr->Epoch->Ts->Len);
+  int64_t pids_len = svr->Epoch->Ts->Len;
+  pthread_t *pids = z_malloc(sizeof(pthread_t) * pids_len);
   z_defer(
       ^(pthread_t *ps) {
         if (ps != nullptr) {
@@ -127,9 +184,21 @@ z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
       },
       pids);
 
-  for (int64_t i = 0; i < svr->Epoch->Ts->Len; ++i) {
+  if (pids == nullptr) {
+    z_error("pids == nullptr");
+    return z_ERR_NOSPACE;
+  }
+
+  for (int64_t i = 0; i < pids_len; ++i) {
     pthread_create(&pids[i], nullptr, z_IOProcess, svr);
   }
+  z_defer(
+      ^(pthread_t *ps, int64_t len) {
+        for (int64_t i = 0; i < len; ++i) {
+          pthread_join(ps[i], nullptr);
+        }
+      },
+      pids, pids_len);
 
   while (1) {
     sock_addr cli_addr;
@@ -144,18 +213,14 @@ z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
     z_info("new connection %s:%u", inet_ntoa(ipv4->sin_addr),
            ntohs(ipv4->sin_port));
 
-    struct kevent ev;
-    EV_SET(&ev, cli_socket, EVFILT_READ, EV_ADD, 0, 0, NULL);
-    if (kevent(svr->KQueue, &ev, 1, NULL, 0, NULL) < 0) {
-      z_error("registering client socket for read events failed");
+    int64_t kq = svr->KQs[cli_socket % kqs_len];
+    z_Error ret = z_SvrEventAdd(kq, cli_socket);
+    if (ret != z_OK) {
+      z_error("z_SvrEventAdd %d", ret);
+      continue;
     }
   }
 
-  for (int64_t i = 0; i < svr->Epoch->Ts->Len; ++i) {
-    pthread_join(pids[i], nullptr);
-  }
-
-  close(svr_sock);
   return z_OK;
 }
 
