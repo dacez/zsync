@@ -1,5 +1,7 @@
+#include "zbinlog/file.h"
 #include "zkv/kv_loop_test.h"
 #include "ztest/test.h"
+#include <stdint.h>
 
 bool z_KVSeqTestCheck() {
   char *binlog_path = "./bin/binlog.log";
@@ -8,7 +10,12 @@ bool z_KVSeqTestCheck() {
   z_ASSERT(ret == z_OK);
 
   int64_t seq = 1;
-  while (1) {
+  int64_t max_offset = 0;
+  int64_t cur_offset = 0;
+  ret = z_ReaderMaxOffset(&rd, &max_offset);
+  z_ASSERT(ret == z_OK);
+  
+  while (cur_offset < max_offset) {
     z_FileRecord *r;
     ret = z_ReaderGetRecord(&rd, &r);
     if (ret != z_OK) {
@@ -23,6 +30,11 @@ bool z_KVSeqTestCheck() {
 
     seq++;
     z_FileRecordFree(r);
+
+    ret = z_ReaderOffset(&rd, &cur_offset);
+    if (ret != z_OK) {
+      break;
+    }
   }
 
   z_ReaderDestroy(&rd);

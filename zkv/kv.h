@@ -2,8 +2,10 @@
 #define z_KV_H
 
 #include "zbinlog/binlog.h"
+#include "zbinlog/file.h"
 #include "zbinlog/record.h"
 #include "zmap/map.h"
+#include <stdint.h>
 
 #define z_MAX_PATH_LENGTH 1024
 
@@ -210,7 +212,14 @@ z_Error z_mapInitFromFile(z_Map *m, char *path, int64_t *last_offset) {
     return ret;
   }
 
-  while (1) {
+  int64_t max_offset = 0;
+  ret = z_ReaderMaxOffset(&rd, &max_offset);
+  if (ret != z_OK) {
+    return ret;
+  }
+
+  *last_offset = 0;
+  while (*last_offset < max_offset) {
     z_FileRecord *r1 = nullptr;
     z_FileRecord *r2 = nullptr;
     int64_t offset1 = 0;
@@ -233,9 +242,13 @@ z_Error z_mapInitFromFile(z_Map *m, char *path, int64_t *last_offset) {
 
     z_FileRecordFree(r1);
     z_FileRecordFree(r2);
+
+    ret = z_ReaderOffset(&rd, last_offset);
+    if (ret != z_OK) {
+      break;
+    }
   }
 
-  ret = z_ReaderOffset(&rd, last_offset);
   z_ReaderDestroy(&rd);
   return ret;
 }

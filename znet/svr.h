@@ -193,12 +193,12 @@ z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
     pthread_create(&pids[i], nullptr, z_IOProcess, svr);
   }
   z_defer(
-      ^(pthread_t *ps, int64_t len) {
-        for (int64_t i = 0; i < len; ++i) {
+      ^(pthread_t *ps) {
+        for (int64_t i = 0; i < pids_len; ++i) {
           pthread_join(ps[i], nullptr);
         }
       },
-      pids, pids_len);
+      pids);
 
   while (1) {
     sock_addr cli_addr;

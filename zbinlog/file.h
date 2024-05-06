@@ -209,4 +209,32 @@ z_Error z_ReaderOffset(z_Reader *rd, int64_t *offset) {
   return z_OK;
 }
 
+z_Error z_ReaderMaxOffset(z_Reader *rd, int64_t *offset) {
+  z_assert(rd != nullptr, offset != nullptr);
+
+  int64_t src_offset = 0;
+  z_Error ret = z_ReaderOffset(rd, &src_offset);
+  if (ret != z_OK) {
+    return ret;
+  }
+
+  if (fseek(rd->File, 0, SEEK_END) != 0) {
+    z_error("fseek");
+    return z_ERR_FS;
+  }
+
+  ret = z_ReaderOffset(rd, offset);
+  if (ret != z_OK) {
+    return ret;
+  }
+
+  if (fseek(rd->File, src_offset, SEEK_SET) != 0) {
+    z_error("fseek");
+    return z_ERR_FS;
+  }
+
+  return z_OK;
+}
+
+
 #endif

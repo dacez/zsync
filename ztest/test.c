@@ -1,5 +1,3 @@
-#define NDEBUG
-
 #include "ztest/test.h"
 
 #include "zbinlog/record_test.h"
@@ -11,12 +9,16 @@
 #include "zutils/lock_test.h"
 #include "zutils/time_test.h"
 #include "zutils/defer_test.h"
+#include "zutils/micro_test.h"
 
 int main() {
-  z_LogInit("./bin/log.txt");
+  z_LogInit("./bin/log.txt", 2);
 
   z_ASSERT(1);
   z_CHECK(1);
+  z_MicroTest();
+  z_DeferTest();
+
   z_FileRecordTest();
   z_TimeTest();
   z_LockTest();
@@ -25,7 +27,6 @@ int main() {
   z_KVRestoreTest();
   z_KVSeqTestCheck();
   z_EpochTest();
-  z_DeferTest();
 
   z_LogDestroy();
 }
