@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-#include "zutils/micro.h"
+#include "zutils/macro.h"
 
 #define z_force_true1(a0)                                                      \
   if ((a0) != true) {                                                          \

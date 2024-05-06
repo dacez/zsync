@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-#include "zutils/micro.h"
+#include "zutils/macro.h"
 
 static inline void z_defer_cleanup(void (^*b)(void)) { (*b)(); }
 #define z_defer_var(c)                                                         \

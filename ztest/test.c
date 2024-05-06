@@ -9,14 +9,14 @@
 #include "zutils/lock_test.h"
 #include "zutils/time_test.h"
 #include "zutils/defer_test.h"
-#include "zutils/micro_test.h"
+#include "zutils/macro_test.h"
 
 int main() {
   z_LogInit("./bin/log.txt", 2);
 
   z_ASSERT(1);
   z_CHECK(1);
-  z_MicroTest();
+  z_MacroTest();
   z_DeferTest();
 
   z_FileRecordTest();

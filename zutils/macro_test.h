@@ -1,4 +1,4 @@
-#include "zutils/micro.h"
+#include "zutils/macro.h"
 #include "ztest/test.h"
 
 #define z_test0 0
@@ -9,7 +9,7 @@
 #define z_test12345 5
 #define z_test123456 6
 
-void z_MicroTest() {
+void z_MacroTest() {
   z_ASSERT(z_argc() == 0);
   z_ASSERT(z_argc(1) == 1);
   z_ASSERT(z_argc(2, 22) == 2);
