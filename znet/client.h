@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #include "zerror/error.h"
-#include "znet/record.h"
+#include "znet/net_record.h"
 #include "zrecord/record.h"
 #include "zutils/buffer.h"
 #include "zutils/log.h"

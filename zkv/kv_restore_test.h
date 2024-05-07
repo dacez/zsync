@@ -22,18 +22,18 @@ void z_KVRestoreTest() {
   z_KV kv;
   z_Error ret =
       z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 1024 * 1024);
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 
   bool loop_ret = z_Loop(&kv, 0, count);
-  z_ASSERT(loop_ret == true);
+  z_ASSERT_TRUE(loop_ret == true);
 
   z_KVDestroy(&kv);
 
   ret = z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 10);
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 
   loop_ret = z_KVRestoreTestCheck(&kv, 0, count);
-  z_ASSERT(loop_ret == true);
+  z_ASSERT_TRUE(loop_ret == true);
 
   z_KVDestroy(&kv);
   return;

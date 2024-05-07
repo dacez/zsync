@@ -2,11 +2,13 @@
 #define z_BINLOG_H
 
 #include "zbinlog/file.h"
+#include "zbinlog/file_record.h"
 #include "zerror/error.h"
 #include "zutils/lock.h"
+#include <stdint.h>
 
-typedef z_Error z_BinLogAfterWrite(void *, z_FileRecord *, int64_t,
-                                   z_FileRecord *, int64_t);
+typedef z_Error z_BinLogAfterWrite(void *, z_Record *, int64_t,
+                                   z_Record *, int64_t);
 
 typedef struct {
   void *Attr;
@@ -29,7 +31,7 @@ void z_BinLogDestroy(z_BinLog *bl) {
 }
 
 z_Error z_BinLogInit(z_BinLog *bl, char *path, int64_t max_size, void *attr,
-                     z_BinLogAfterWrite *after_write) {
+                     z_BinLogAfterWrite *after_write, int64_t *offset) {
   if (bl == nullptr || path == nullptr || max_size == 0 || attr == nullptr ||
       after_write == nullptr) {
     z_error("bl == nullptr || path == nullptr || max_size == 0 || attr == "
@@ -39,7 +41,7 @@ z_Error z_BinLogInit(z_BinLog *bl, char *path, int64_t max_size, void *attr,
 
   z_LockInit(&bl->Lock);
 
-  z_Error ret = z_WriterInit(&bl->Writer, path, max_size);
+  z_Error ret = z_WriterInit(&bl->Writer, path, max_size, offset);
   if (ret != z_OK) {
     return ret;
   }
@@ -56,15 +58,20 @@ z_Error z_BinLogAppendRecord(z_BinLog *bl, z_FileRecord *r) {
   z_Error ret = z_OK;
   int64_t offset = 0;
 
+  ret = z_WriterOffset(&bl->Writer, &offset);
+  if (ret != z_OK) {
+    return ret;
+  }
+  
   r->Seq = atomic_fetch_add(&bl->Seq, 1);
-  z_FileRecordSum(r);
-  ret = z_WriterAppendRecord(&bl->Writer, r, &offset);
+  z_RecordSum(r->Record);
+  ret = z_WriterAppendRecord(&bl->Writer, r);
   if (ret != z_OK) {
     z_LockUnLock(&bl->Lock);
     return ret;
   }
 
-  ret = bl->AfterWrite(bl->Attr, r, offset, nullptr, 0);
+  ret = bl->AfterWrite(bl->Attr, r->Record, offset, nullptr, 0);
   if (ret != z_OK) {
     z_LockUnLock(&bl->Lock);
     return ret;
@@ -81,23 +88,32 @@ z_Error z_BinLogAppendDoubleRecord(z_BinLog *bl, z_FileRecord *r1,
   z_Error ret = z_OK;
   int64_t offset1 = 0;
   int64_t offset2 = 0;
+
+  ret = z_WriterOffset(&bl->Writer, &offset1);
+  if (ret != z_OK) {
+    return ret;
+  }
   r1->Seq = atomic_fetch_add(&bl->Seq, 1);
-  z_FileRecordSum(r1);
-  ret = z_WriterAppendRecord(&bl->Writer, r1, &offset1);
+  z_RecordSum(r1->Record);
+  ret = z_WriterAppendRecord(&bl->Writer, r1);
   if (ret != z_OK) {
     z_LockUnLock(&bl->Lock);
     return ret;
   }
 
+  ret = z_WriterOffset(&bl->Writer, &offset2);
+  if (ret != z_OK) {
+    return ret;
+  }
   r2->Seq = atomic_fetch_add(&bl->Seq, 1);
-  z_FileRecordSum(r2);
-  ret = z_WriterAppendRecord(&bl->Writer, r2, &offset2);
+  z_RecordSum(r2->Record);
+  ret = z_WriterAppendRecord(&bl->Writer, r2);
   if (ret != z_OK) {
     z_LockUnLock(&bl->Lock);
     return ret;
   }
 
-  ret = bl->AfterWrite(bl->Attr, r1, offset1, r2, offset2);
+  ret = bl->AfterWrite(bl->Attr, r1->Record, offset1, r2->Record, offset2);
   if (ret != z_OK) {
     z_LockUnLock(&bl->Lock);
     return ret;
@@ -106,6 +122,4 @@ z_Error z_BinLogAppendDoubleRecord(z_BinLog *bl, z_FileRecord *r1,
   z_LockUnLock(&bl->Lock);
   return ret;
 }
-
-bool z_BinLogIsEmpty(z_BinLog *bl) { return z_WriterIsEmpty(&bl->Writer); }
 #endif

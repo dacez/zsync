@@ -18,14 +18,14 @@ void z_SvrTest() {
   z_Threads ts;
   z_Error ret = z_ThreadsInit(&ts, 8);
   z_defer(z_ThreadsDestory, &ts);
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 
   z_Epoch epoch;
   ret = z_EpochInit(&epoch, 32, &ts);
   z_defer(z_EpochDestory, &epoch);
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 
   z_Svr svr;
   ret = z_SvrRun(&svr, "127.0.0.1", 12301, &epoch, nullptr, z_TestHandle);
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 }

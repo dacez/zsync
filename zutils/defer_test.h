@@ -12,16 +12,16 @@ void z_DeferTest() {
 
   int a1 = 1, a2 = 2;
   { z_defer(func0); }
-  z_ASSERT(arg == 0);
+  z_ASSERT_TRUE(arg == 0);
 
   { z_defer(func1, a1); }
-  z_ASSERT(arg == 1);
+  z_ASSERT_TRUE(arg == 1);
 
   { z_defer(func2, a1, a2); }
-  z_ASSERT(arg == 2);
+  z_ASSERT_TRUE(arg == 2);
 
   { z_defer(funcptr, &a1, a2); }
-  z_ASSERT(a1 == a2)
+  z_ASSERT_TRUE(a1 == a2)
 
   {
     z_defer(
@@ -30,7 +30,7 @@ void z_DeferTest() {
         },
         a1);
   }
-  z_ASSERT(arg == 4);
+  z_ASSERT_TRUE(arg == 4);
 
   a1 = 1;
   a2 = 2;
@@ -41,5 +41,5 @@ void z_DeferTest() {
         },
         a1, &a2);
   }
-  z_ASSERT(a1 == a2);
+  z_ASSERT_TRUE(a1 == a2);
 }

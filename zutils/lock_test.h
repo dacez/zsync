@@ -34,17 +34,17 @@ void z_LockTest() {
 
   z_LockDestroy(&z_lock);
 
-  z_ASSERT(z_lock_test_count == thread_count * z_lock_loop_count);
+  z_ASSERT_TRUE(z_lock_test_count == thread_count * z_lock_loop_count);
 
   z_free(ts);
 
   z_LockInit(&z_lock);
-  z_ASSERT(z_LockTryLock(&z_lock) == true);
-  z_ASSERT(z_LockTryLock(&z_lock) == false);
+  z_ASSERT_TRUE(z_LockTryLock(&z_lock) == true);
+  z_ASSERT_TRUE(z_LockTryLock(&z_lock) == false);
   z_LockUnLock(&z_lock);
 
   z_LockLock(&z_lock);
-  z_ASSERT(z_LockTryLock(&z_lock) == false);
+  z_ASSERT_TRUE(z_LockTryLock(&z_lock) == false);
   z_LockUnLock(&z_lock);
 
   z_LockDestroy(&z_lock);

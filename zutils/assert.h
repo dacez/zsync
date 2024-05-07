@@ -1,5 +1,5 @@
-#ifndef z_CHECK_H
-#define z_CHECK_H
+#ifndef z_ASSERT_H
+#define z_ASSERT_H
 
 #include <assert.h>
 

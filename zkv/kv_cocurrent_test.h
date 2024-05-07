@@ -10,10 +10,10 @@ void z_OneThread() {
   z_KV kv;
   z_Error ret =
       z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 1024 * 1024);
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 
   bool loop_ret = z_Loop(&kv, 0, 10000);
-  z_ASSERT(loop_ret == true);
+  z_ASSERT_TRUE(loop_ret == true);
 
   z_KVDestroy(&kv);
   return;
@@ -42,7 +42,7 @@ void z_MutilThread() {
   remove(binlog_path);
   z_KV kv;
   z_Error ret = z_KVInit(&kv, binlog_path, 1024LL * 1024LL * 1024LL, 10240);
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 
   z_Arg *args = z_malloc(sizeof(z_Arg) * thread_count);
   for (int i = 0; i < thread_count; i++) {
@@ -53,14 +53,14 @@ void z_MutilThread() {
   for (int i = 0; i < thread_count; i++) {
     int p_ret = pthread_create(&args[i].tid, nullptr, z_KVThreadFunc, &args[i]);
     if (p_ret != 0) {
-      z_ASSERT("p_ret != 0");
+      z_ASSERT_TRUE("p_ret != 0");
     }
   }
 
   for (int i = 0; i < thread_count; i++) {
     int p_ret = pthread_join(args[i].tid, nullptr);
     if (p_ret != 0) {
-      z_ASSERT("p_ret != 0");
+      z_ASSERT_TRUE("p_ret != 0");
     }
   }
 
@@ -70,7 +70,7 @@ void z_MutilThread() {
       func_ret = false;
   }
 
-  z_ASSERT(func_ret == true);
+  z_ASSERT_TRUE(func_ret == true);
   z_free(args);
   z_KVDestroy(&kv);
   return;

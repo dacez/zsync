@@ -8,7 +8,7 @@
 
 #include "zepoch/epoch.h"
 #include "zerror/error.h"
-#include "znet/record.h"
+#include "znet/net_record.h"
 #include "znet/socket.h"
 #include "zrecord/record.h"
 #include "zutils/defer.h"

@@ -1,7 +1,7 @@
 
 #include "zerror/error.h"
 #include "znet/client.h"
-#include "znet/record.h"
+#include "znet/net_record.h"
 #include "zrecord/record.h"
 #include "ztest/test.h"
 #include "zutils/buffer.h"
@@ -15,7 +15,7 @@ void z_ClientTest() {
 
   z_Cli cli = {};
   z_Error ret = z_CliInit(&cli, "127.0.0.1", 12301, 16);
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 
   for (int64_t i = 0; i < count; ++i) {
     z_Req req = {};
@@ -52,5 +52,5 @@ void z_ClientTest() {
     }
   }
 
-  z_ASSERT(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_OK);
 }
