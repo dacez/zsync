@@ -109,11 +109,17 @@ FILE *z_LogFile() {
 z_Error z_LogInit(char *path, int64_t log_level) {
   z_assert(path != nullptr, log_level <= 3);
 
+  z_log_level = log_level;
+
+  if (*path == '\0') {
+    return z_OK;
+  }
   z_log_file = fopen(path, "a");
   if (z_log_file == nullptr) {
+    z_panic("z_log_file == nullptr %s", path);
+    exit(EXIT_FAILURE);
     return z_ERR_FS;
   }
-  z_log_level = log_level;
   z_color_yellow = "";
   z_color_pink = "";
   z_color_red = "";
