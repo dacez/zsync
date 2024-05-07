@@ -284,8 +284,14 @@ z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size,
   kv->BucketsLen = buckets_len;
   int64_t wr_offset = {};
   z_Error ret = z_BinLogInit(&kv->BinLog, kv->BinLogPath, kv->BinLogFileMaxSize,
-                             &kv->Map, z_binLogAfterWrite, &wr_offset);
+                             &kv->Map, z_binLogAfterWrite);
   if (ret != z_OK) {
+    return ret;
+  }
+
+  ret = z_WriterOffset(&kv->BinLog.Writer, &wr_offset);
+  if (ret != z_OK) {
+    z_BinLogDestroy(&kv->BinLog);
     return ret;
   }
 
@@ -299,25 +305,17 @@ z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size,
     return z_OK;
   }
 
-  int64_t reader_offset = 0;
-  ret = z_mapInitFromFile(&kv->Map, kv->BinLogPath, &reader_offset);
+  int64_t rd_offset = 0;
+  ret = z_mapInitFromFile(&kv->Map, kv->BinLogPath, &rd_offset);
   if (ret != z_OK) {
     z_BinLogDestroy(&kv->BinLog);
     z_MapDestroy(&kv->Map);
     return ret;
   }
 
-  int64_t writer_offset = 0;
-  ret = z_WriterOffset(&kv->BinLog.Writer, &writer_offset);
-  if (ret != z_OK) {
-    z_BinLogDestroy(&kv->BinLog);
-    z_MapDestroy(&kv->Map);
-    return ret;
-  }
-
-  if (writer_offset != reader_offset) {
-    z_error("writer_offset(%lld) != reader_offset(%lld)", writer_offset,
-            reader_offset);
+  if (wr_offset != rd_offset) {
+    z_error("writer_offset(%lld) != reader_offset(%lld)", wr_offset,
+            rd_offset);
     return z_ERR_INVALID_DATA;
   }
 

@@ -27,8 +27,8 @@ z_Error z_WriterOffset(z_Writer *wr, int64_t *offset) {
   return z_OK;
 }
 
-z_Error z_WriterInit(z_Writer *wr, char *path, int64_t max_size, int64_t *offset) {
-  if (wr == nullptr || path == nullptr || max_size == 0 || offset == nullptr) {
+z_Error z_WriterInit(z_Writer *wr, char *path, int64_t max_size) {
+  if (wr == nullptr || path == nullptr || max_size == 0) {
     z_error("wr == nullptr || path == nullptr || max_size == 0");
     return z_ERR_INVALID_DATA;
   }
@@ -38,11 +38,6 @@ z_Error z_WriterInit(z_Writer *wr, char *path, int64_t max_size, int64_t *offset
   if (wr->File == nullptr) {
     z_error("fopen %s", path);
     return z_ERR_FS;
-  }
-
-  z_Error ret = z_WriterOffset(wr, offset);
-  if (ret != z_OK) {
-    return ret;
   }
   
   return z_OK;

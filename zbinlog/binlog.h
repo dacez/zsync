@@ -31,7 +31,7 @@ void z_BinLogDestroy(z_BinLog *bl) {
 }
 
 z_Error z_BinLogInit(z_BinLog *bl, char *path, int64_t max_size, void *attr,
-                     z_BinLogAfterWrite *after_write, int64_t *offset) {
+                     z_BinLogAfterWrite *after_write) {
   if (bl == nullptr || path == nullptr || max_size == 0 || attr == nullptr ||
       after_write == nullptr) {
     z_error("bl == nullptr || path == nullptr || max_size == 0 || attr == "
@@ -41,7 +41,7 @@ z_Error z_BinLogInit(z_BinLog *bl, char *path, int64_t max_size, void *attr,
 
   z_LockInit(&bl->Lock);
 
-  z_Error ret = z_WriterInit(&bl->Writer, path, max_size, offset);
+  z_Error ret = z_WriterInit(&bl->Writer, path, max_size);
   if (ret != z_OK) {
     return ret;
   }
