@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <unistd.h> // close()
@@ -17,5 +18,10 @@
 typedef struct sockaddr_in ipv4_addr;
 typedef struct sockaddr sock_addr;
 
+typedef struct {
+  int FD;
+} z_Socket;
 
+int64_t z_SocketRead();
+int64_t z_SocketWrite();
 #endif
