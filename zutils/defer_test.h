@@ -8,6 +8,13 @@ void func1(int a1) { arg = 1; }
 void func2(int a1, int a2) { arg = 2; }
 void funcptr(int *a1, int a2) { *a1 = a2; }
 
+typedef struct {} z_UniqueTest;
+
+void z_UniqueTestDestroy(z_UniqueTest *ut) {
+  arg = 5;
+  return;
+}
+
 void z_DeferTest() {
 
   int a1 = 1, a2 = 2;
@@ -42,4 +49,8 @@ void z_DeferTest() {
         a1, &a2);
   }
   z_ASSERT_TRUE(a1 == a2);
+
+  {z_unique(z_UniqueTest) ut = {};}
+  z_ASSERT_TRUE(arg == 5);
+  
 }

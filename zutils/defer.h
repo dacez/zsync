@@ -35,3 +35,5 @@ static inline void z_defer_cleanup(void (^*b)(void)) { (*b)(); }
   static_assert(z_argc(__VA_ARGS__) < 3);                                      \
   z_cat(z_defer, z_argc(__VA_ARGS__))(f __VA_OPT__(, ) __VA_ARGS__)
 #endif
+
+#define z_unique(type) [[gnu::cleanup(z_cat(type, Destroy))]] type
