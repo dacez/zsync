@@ -1,10 +1,12 @@
 #ifndef z_RECORD_H
 #define z_RECORD_H
-#include <stdint.h>
-#include "zutils/log.h"
+#include "zerror/error.h"
+#include "zutils/assert.h"
 #include "zutils/buffer.h"
 #include "zutils/hash.h"
+#include "zutils/log.h"
 #include "zutils/mem.h"
+#include <stdint.h>
 
 typedef enum uint8_t {
   z_ROP_INSERT = 1,
@@ -18,16 +20,78 @@ typedef enum uint8_t {
 typedef struct {
   uint64_t OP : 8;
   uint64_t Sum : 8;
-  uint64_t Reserved :8;
+  uint64_t Reserved : 8;
   uint64_t KeyLen : 16;
   uint64_t ValLen : 24;
 } z_Record;
 
+typedef struct {
+  uint64_t OP : 8;
+  uint64_t Sum : 8;
+  uint64_t Reserved : 16;
+  uint64_t Len : 32;
+} z_UpdateRecord;
+
+static_assert(sizeof(z_UpdateRecord) == sizeof(z_Record));
+
+typedef struct {
+  uint64_t KeyLen : 16;
+  uint64_t ValLen : 24;
+  uint64_t SrcValLen : 24;
+} z_UpdateRecordKVV;
+
+bool z_IsUpdateRecord(z_Record *r) {
+  if (r->OP == z_ROP_UPDATE) {
+    return true;
+  }
+
+  return false;
+}
+
+int64_t z_UpdateRecordLen(z_UpdateRecord *r) {
+  z_assert(r != nullptr);
+  return ((z_UpdateRecord *)r)->Len + sizeof(z_UpdateRecord);
+}
+
+z_Error z_UpdateRecordKey(z_UpdateRecord *r, z_Buffer *key) {
+  z_assert(r != nullptr, r->Len != 0, key != nullptr);
+  z_UpdateRecordKVV *kvv =
+      (z_UpdateRecordKVV *)((int8_t *)r + sizeof(z_UpdateRecord));
+
+  z_assert(kvv->KeyLen != 0);
+  key->Len = kvv->KeyLen;
+  key->Data = (int8_t *)r + sizeof(z_UpdateRecord) + sizeof(z_UpdateRecordKVV);
+  return z_OK;
+}
+
+z_Error z_UpdateRecordValue(z_UpdateRecord *r, z_Buffer *value) {
+  z_assert(r != nullptr, r->Len != 0, value != nullptr);
+  z_UpdateRecordKVV *kvv =
+      (z_UpdateRecordKVV *)((int8_t *)r + sizeof(z_UpdateRecord));
+  value->Len = kvv->ValLen;
+  value->Data = (int8_t *)r + sizeof(z_UpdateRecord) +
+                sizeof(z_UpdateRecordKVV) + kvv->KeyLen;
+  return z_OK;
+}
+
+z_Error z_UpdateRecordSrcValue(z_UpdateRecord *r, z_Buffer *value) {
+  z_assert(r != nullptr, r->Len != 0, value != nullptr);
+  z_UpdateRecordKVV *kvv =
+      (z_UpdateRecordKVV *)((int8_t *)r + sizeof(z_UpdateRecord));
+  value->Len = kvv->SrcValLen;
+  value->Data = (int8_t *)r + sizeof(z_UpdateRecord) +
+                sizeof(z_UpdateRecordKVV) + kvv->KeyLen + kvv->ValLen;
+  return z_OK;
+}
 
 int64_t z_RecordLen(z_Record *r) {
   if (r == nullptr) {
     z_error("r == nullptr");
     return 0;
+  }
+
+  if (z_IsUpdateRecord(r) == true) {
+    return z_UpdateRecordLen((z_UpdateRecord *)r);
   }
   return r->KeyLen + r->ValLen + sizeof(z_Record);
 }

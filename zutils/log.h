@@ -85,7 +85,7 @@ FILE *z_LogFile() {
     fprintf(z_LogFile(), "%s", log_str);                                       \
   }
 
-#define z_panic(...)                                                           \
+#define z_panic_color(color, color_end, fd, ...)                               \
   {                                                                            \
     char time_str[32];                                                         \
     z_LocalTime(time_str);                                                     \
@@ -94,19 +94,27 @@ FILE *z_LogFile() {
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
     if (errno != 0) {                                                          \
       snprintf(log_str, sizeof(log_str),                                       \
-               "%s %s [panic] %s:%d:%s lastsyserror: %s exit %s \n",           \
-               z_color_red, time_str, __FILE__, __LINE__, tail_str,            \
-               strerror(errno), z_color_end);                                  \
+               color " %s [panic] %s:%d:%s lastsyserror: %s exit\n" color_end, \
+               time_str, __FILE__, __LINE__, tail_str, strerror(errno));       \
     } else {                                                                   \
-      snprintf(log_str, sizeof(log_str), "%s %s [panic] %s:%d:%s exit %s \n",  \
-               z_color_red, time_str, __FILE__, __LINE__, tail_str,            \
-               z_color_end);                                                   \
+      snprintf(log_str, sizeof(log_str),                                       \
+               color " %s [panic] %s:%d:%s exit\n" color_end, time_str,        \
+               __FILE__, __LINE__, tail_str);                                  \
     }                                                                          \
-    fprintf(z_LogFile(), "%s", log_str);                                       \
-    exit(EXIT_FAILURE);                                                        \
+    fprintf(fd, "%s", log_str);                                                \
+  }
+
+#define z_panic(...)                                                           \
+  {                                                                            \
+    if (z_LogFile() != stdout) {                                               \
+      z_panic_color("\033[;31m", "\033[;0m", z_LogFile(), "%d", 1);            \
+    }                                                                          \
+    z_panic_color("\033[;31m", "\033[;0m", stdout, "%d", 1);                   \
+    exit(1);                                                                   \
   }
 
 z_Error z_LogInit(char *path, int64_t log_level) {
+
   z_assert(path != nullptr, log_level <= 3);
 
   z_log_level = log_level;
