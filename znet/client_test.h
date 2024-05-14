@@ -41,7 +41,7 @@ void z_ClientTest() {
       break;
     }
 
-    req.Record = z_RecordNew(z_ROP_INSERT, k, v);
+    req.Record = z_RecordNewByKV(z_ROP_INSERT, k, v);
     if (ret != z_OK) {
       break;
     }

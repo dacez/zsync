@@ -7,8 +7,7 @@
 #include "zutils/lock.h"
 #include <stdint.h>
 
-typedef z_Error z_BinLogAfterWrite(void *, z_Record *, int64_t,
-                                   z_Record *, int64_t);
+typedef z_Error z_BinLogAfterWrite(void *, z_Record *, int64_t);
 
 typedef struct {
   void *Attr;
@@ -71,7 +70,7 @@ z_Error z_BinLogAppendRecord(z_BinLog *bl, z_FileRecord *r) {
     return ret;
   }
 
-  ret = bl->AfterWrite(bl->Attr, r->Record, offset, nullptr, 0);
+  ret = bl->AfterWrite(bl->Attr, r->Record, offset);
   if (ret != z_OK) {
     z_LockUnLock(&bl->Lock);
     return ret;
@@ -81,6 +80,7 @@ z_Error z_BinLogAppendRecord(z_BinLog *bl, z_FileRecord *r) {
   return ret;
 }
 
+/*
 z_Error z_BinLogAppendDoubleRecord(z_BinLog *bl, z_FileRecord *r1,
                                    z_FileRecord *r2) {
   z_LockLock(&bl->Lock);
@@ -122,4 +122,5 @@ z_Error z_BinLogAppendDoubleRecord(z_BinLog *bl, z_FileRecord *r1,
   z_LockUnLock(&bl->Lock);
   return ret;
 }
+*/
 #endif

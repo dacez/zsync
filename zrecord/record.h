@@ -12,9 +12,8 @@ typedef enum uint8_t {
   z_ROP_INSERT = 1,
   z_ROP_DELETE = 2,
   z_ROP_UPDATE = 3,
-  z_ROP_UPDATE_SRC_VALUE = 4,
-  z_ROP_FORCE_UPDATE = 5,
-  z_ROP_FORCE_UPSERT = 6,
+  z_ROP_FORCE_UPDATE = 4,
+  z_ROP_FORCE_UPSERT = 5,
 } z_RecordOP;
 
 typedef struct {
@@ -97,27 +96,32 @@ int64_t z_RecordLen(z_Record *r) {
 }
 
 z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
-  if (r == nullptr || r->KeyLen == 0 || key == nullptr) {
-    z_error("r == nullptr || r->KeyLen == 0 || key == nullptr");
-    return z_ERR_INVALID_DATA;
+  z_assert(r != nullptr, key != nullptr);
+  if (z_IsUpdateRecord(r)) {
+    return z_UpdateRecordKey((z_UpdateRecord *)r, key);
   }
 
+  z_assert(r->KeyLen != 0);
   key->Data = (int8_t *)(r + 1);
   key->Len = r->KeyLen;
 
   return z_OK;
 }
 
-z_Error z_RecordValue(z_Record *r, z_Buffer *value) {
-  if (r == nullptr || value == nullptr) {
-    z_error("r == nullptr || value == nullptr");
-    return z_ERR_INVALID_DATA;
+z_Error z_RecordValue(z_Record *r, z_Buffer *val) {
+  z_assert(r != nullptr, val != nullptr);
+  if (z_IsUpdateRecord(r)) {
+    return z_UpdateRecordValue((z_UpdateRecord *)r, val);
   }
 
-  value->Data = (int8_t *)(r + 1) + r->KeyLen;
-  value->Len = r->ValLen;
-
+  val->Data = (int8_t *)(r + 1) + r->KeyLen;
+  val->Len = r->ValLen;
   return z_OK;
+}
+
+z_Error z_RecordSrcValue(z_Record *r, z_Buffer *src_val) {
+  z_assert(r!= nullptr, r->OP == z_ROP_UPDATE);
+  return z_UpdateRecordSrcValue((z_UpdateRecord *)r, src_val);
 }
 
 z_Error z_RecordCheck(z_Record *r) {
@@ -164,7 +168,7 @@ z_Record *z_RecordNewByLen(int64_t len) {
   return r;
 }
 
-z_Record *z_RecordNew(uint8_t op, z_Buffer key, z_Buffer val) {
+z_Record *z_RecordNewByKV(uint8_t op, z_Buffer key, z_Buffer val) {
   z_Record record = {.OP = op, .KeyLen = key.Len, .ValLen = val.Len};
   int64_t len = z_RecordLen(&record);
   z_Record *ret_record = z_RecordNewByLen(len);
@@ -182,6 +186,34 @@ z_Record *z_RecordNew(uint8_t op, z_Buffer key, z_Buffer val) {
   }
 
   return ret_record;
+}
+
+z_Record *z_RecordNewByKVV(uint8_t op, z_Buffer key, z_Buffer val, z_Buffer src_val) {
+  z_assert(op == z_ROP_UPDATE);
+  z_UpdateRecord record = {.OP = op, .Len = key.Len+val.Len+src_val.Len+sizeof(z_UpdateRecordKVV)};
+  int64_t len = z_RecordLen((z_Record*)&record);
+  z_UpdateRecord *ret_record = (z_UpdateRecord*)z_RecordNewByLen(len);
+  if (ret_record == nullptr) {
+    z_error("ret_record == nullptr");
+    return nullptr;
+  }
+  z_UpdateRecordKVV *kvv = (z_UpdateRecordKVV *)ret_record + 1;
+  kvv->KeyLen = key.Len;
+  kvv->ValLen = val.Len;
+  kvv->SrcValLen = src_val.Len;
+
+  *ret_record = record;
+  if (key.Len > 0) {
+    memcpy((int8_t*)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV), key.Data, key.Len);
+  }
+  if (val.Len > 0) {
+    memcpy((int8_t*)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV) + kvv->KeyLen, val.Data, val.Len);
+  }
+  if (src_val.Len > 0) {
+    memcpy((int8_t*)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV) + kvv->KeyLen + kvv->ValLen, src_val.Data, src_val.Len);
+  }
+
+  return (z_Record*)ret_record;
 }
 
 void z_RecordFree(z_Record *r) {

@@ -8,6 +8,7 @@
 #include "zmap/map.h"
 #include "zrecord/record.h"
 #include "zutils/assert.h"
+#include "zutils/defer.h"
 #include <stdint.h>
 
 #define z_MAX_PATH_LENGTH 1024
@@ -20,93 +21,59 @@ typedef struct {
   int64_t BucketsLen;
 } z_KV;
 
-z_Error z_binLogAfterWrite(void *attr, z_Record *r1, int64_t offset1,
-                           z_Record *r2, int64_t offset2) {
-  if (attr == nullptr || r1 == nullptr) {
-    z_error("attr == nullptr || r1 == nullptr");
-    return z_ERR_INVALID_DATA;
-  }
+z_Error z_binLogAfterWrite(void *attr, z_Record *r, int64_t offset) {
+  z_assert(attr != nullptr, r != nullptr);
 
   z_Map *m = (z_Map *)attr;
   z_Error ret = z_OK;
-  switch (r1->OP) {
+  switch (r->OP) {
   case z_ROP_INSERT: {
-    if (r2 != nullptr) {
-      z_error("r2 != nullptr");
-      return z_ERR_INVALID_DATA;
-    }
-
     z_Buffer k;
-    ret = z_RecordKey(r1, &k);
+    ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
     }
-    return z_MapInsert(m, k, offset1);
+    return z_MapInsert(m, k, offset);
   }
   case z_ROP_DELETE: {
-    if (r2 != nullptr) {
-      z_error("r2 != nullptr");
-      return z_ERR_INVALID_DATA;
-    }
-
     z_Buffer k;
-    ret = z_RecordKey(r1, &k);
+    ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
     }
     return z_MapDelete(m, k);
   }
   case z_ROP_UPDATE: {
-    if (r2 == nullptr || r2->OP != z_ROP_UPDATE_SRC_VALUE) {
-      z_error("r2 == nullptr || r2->OP != z_ROP_UPDATE_SRC_VALUE");
-      return z_ERR_INVALID_DATA;
-    }
     z_Buffer k;
-    ret = z_RecordKey(r1, &k);
+    ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
     }
     z_Buffer src_v;
-    ret = z_RecordKey(r2, &src_v);
+    ret = z_RecordSrcValue(r, &src_v);
     if (ret != z_OK) {
       return ret;
     }
-    return z_MapUpdate(m, k, offset1, src_v);
+    return z_MapUpdate(m, k, offset, src_v);
   }
-
-  case z_ROP_UPDATE_SRC_VALUE: {
-    z_error("invalid op %d", r1->OP);
-    return z_ERR_INVALID_DATA;
-  }
-
   case z_ROP_FORCE_UPDATE: {
-    if (r2 != nullptr) {
-      z_error("r2 != nullptr");
-      return z_ERR_INVALID_DATA;
-    }
     z_Buffer k;
-    ret = z_RecordKey(r1, &k);
+    ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
     }
-    return z_MapForceUpdate(m, k, offset1);
+    return z_MapForceUpdate(m, k, offset);
   }
-
   case z_ROP_FORCE_UPSERT: {
-    if (r2 != nullptr) {
-      z_error("r2 != nullptr");
-      return z_ERR_INVALID_DATA;
-    }
     z_Buffer k;
-    ret = z_RecordKey(r1, &k);
+    ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
     }
-    return z_MapForceUpsert(m, k, offset1);
+    return z_MapForceUpsert(m, k, offset);
   }
-
   default:
-    z_error("invalid op %d", r1->OP);
+    z_error("invalid op %d", r->OP);
     return z_ERR_INVALID_DATA;
   }
   return z_OK;
@@ -171,39 +138,21 @@ bool z_mapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset) {
   return isEqual;
 }
 
-z_Error z_fileGetRecord(z_Reader *rd, z_Record **r1, int64_t *offset1,
-                        z_Record **r2, int64_t *offset2) {
-  if (rd == nullptr || r1 == nullptr || offset1 == nullptr || r2 == nullptr ||
-      offset2 == nullptr) {
-    z_error("rd == nullptr || r1 == nullptr || offset1 == nullptr || r2 == "
-            "nullptr || offset2 == nullptr");
-    return z_ERR_INVALID_DATA;
-  }
-  z_Error ret = z_ReaderOffset(rd, offset1);
+z_Error z_fileGetRecord(z_Reader *rd, z_Record **r, int64_t *offset) {
+  z_assert(rd != nullptr, r != nullptr, offset != nullptr);
+
+  z_Error ret = z_ReaderOffset(rd, offset);
   if (ret != z_OK) {
     return ret;
   }
 
-  z_FileRecord fr1, fr2;
-  ret = z_ReaderGetRecord(rd, &fr1);
+  z_FileRecord fr;
+  ret = z_ReaderGetRecord(rd, &fr);
   if (ret != z_OK) {
     return ret;
   }
-  *r1 = fr1.Record;
 
-  if ((*r1)->OP == z_ROP_UPDATE) {
-    ret = z_ReaderOffset(rd, offset2);
-    if (ret != z_OK) {
-      return ret;
-    }
-
-    ret = z_ReaderGetRecord(rd, &fr2);
-    if (ret != z_OK) {
-      return ret;
-    }
-    *r2 = fr2.Record;
-  }
-
+  *r = fr.Record;
   return z_OK;
 }
 
@@ -213,7 +162,7 @@ z_Error z_mapInitFromFile(z_Map *m, char *path, int64_t *last_offset) {
     return z_ERR_INVALID_DATA;
   }
 
-  z_Reader rd;
+  z_unique(z_Reader) rd;
   z_Error ret = z_ReaderInit(&rd, path);
   if (ret != z_OK) {
     return ret;
@@ -227,28 +176,21 @@ z_Error z_mapInitFromFile(z_Map *m, char *path, int64_t *last_offset) {
 
   *last_offset = 0;
   while (*last_offset < max_offset) {
-    z_Record *r1 = nullptr;
-    z_Record *r2 = nullptr;
-    int64_t offset1 = 0;
-    int64_t offset2 = 0;
-    ret = z_fileGetRecord(&rd, &r1, &offset1, &r2, &offset2);
+    z_Record *r = nullptr;
+    z_defer(z_RecordFree, r);
+    int64_t offset = 0;
+
+    ret = z_fileGetRecord(&rd, &r, &offset);
     if (ret != z_OK) {
-      z_RecordFree(r1);
-      z_RecordFree(r2);
       break;
     }
 
-    ret = z_binLogAfterWrite((void *)m, r1, offset1, r2, offset2);
+    ret = z_binLogAfterWrite((void *)m, r, offset);
     if (ret != z_OK && ret != z_ERR_EXIST && ret != z_ERR_NOT_FOUND &&
         ret != z_ERR_CONFLICT) {
       z_error("z_binLogAfterWrite %d", ret);
-      z_RecordFree(r1);
-      z_RecordFree(r2);
       break;
     }
-
-    z_RecordFree(r1);
-    z_RecordFree(r2);
 
     ret = z_ReaderOffset(&rd, last_offset);
     if (ret != z_OK) {
@@ -256,7 +198,6 @@ z_Error z_mapInitFromFile(z_Map *m, char *path, int64_t *last_offset) {
     }
   }
 
-  z_ReaderDestroy(&rd);
   return ret;
 }
 
@@ -323,23 +264,12 @@ z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size,
   return z_OK;
 }
 
-z_Error z_KVFromRecord(z_KV *kv, z_Record *r1, z_Record *r2) {
-  z_assert(kv != nullptr, r1 != nullptr);
-  z_assert(r1->OP != z_ROP_UPDATE && r2 == nullptr || r1->OP == z_ROP_UPDATE && r2 != nullptr && r2->OP == z_ROP_UPDATE_SRC_VALUE);
+z_Error z_KVFromRecord(z_KV *kv, z_Record *r) {
+  z_assert(kv != nullptr, r != nullptr);
 
   z_Error ret = z_OK;
-  z_FileRecord fr1 = {.Record = r1};
-  z_FileRecord fr2 = {.Record = r2};
-
-  if (r1->OP == z_ROP_UPDATE) {
-    ret = z_BinLogAppendDoubleRecord(&kv->BinLog, &fr1, &fr2);
-    if (ret != z_OK) {
-      return ret;
-    }
-    return z_OK;
-  }
-
-  ret = z_BinLogAppendRecord(&kv->BinLog, &fr1);
+  z_FileRecord fr = {.Record = r};
+  ret = z_BinLogAppendRecord(&kv->BinLog, &fr);
   if (ret != z_OK) {
     return ret;
   }
@@ -350,12 +280,12 @@ z_Error z_KVInsert(z_KV *kv, z_Buffer k, z_Buffer v) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
   z_assert(v.Len != 0, v.Data != nullptr);
 
-  z_Record *r = z_RecordNew(z_ROP_INSERT, k, v);
+  z_Record *r = z_RecordNewByKV(z_ROP_INSERT, k, v);
   if (r == nullptr) {
     return z_ERR_NOSPACE;
   }
 
-  z_Error ret = z_KVFromRecord(kv, r, nullptr);
+  z_Error ret = z_KVFromRecord(kv, r);
 
   z_RecordFree(r);
   return ret;
@@ -365,12 +295,12 @@ z_Error z_KVForceUpdate(z_KV *kv, z_Buffer k, z_Buffer v) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
   z_assert(v.Len != 0, v.Data != nullptr);
 
-  z_Record *r = z_RecordNew(z_ROP_FORCE_UPDATE, k, v);
+  z_Record *r = z_RecordNewByKV(z_ROP_FORCE_UPDATE, k, v);
   if (r == nullptr) {
     return z_ERR_NOSPACE;
   }
 
-  z_Error ret = z_KVFromRecord(kv, r, nullptr);
+  z_Error ret = z_KVFromRecord(kv, r);
 
   z_RecordFree(r);
   return ret;
@@ -380,12 +310,12 @@ z_Error z_KVForceUpsert(z_KV *kv, z_Buffer k, z_Buffer v) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
   z_assert(v.Len != 0, v.Data != nullptr);
 
-  z_Record *r = z_RecordNew(z_ROP_FORCE_UPDATE, k, v);
+  z_Record *r = z_RecordNewByKV(z_ROP_FORCE_UPDATE, k, v);
   if (r == nullptr) {
     return z_ERR_NOSPACE;
   }
 
-  z_Error ret = z_KVFromRecord(kv, r, nullptr);
+  z_Error ret = z_KVFromRecord(kv, r);
 
   z_RecordFree(r);
   return ret;
@@ -396,22 +326,14 @@ z_Error z_KVUpdate(z_KV *kv, z_Buffer k, z_Buffer v, z_Buffer src_v) {
   z_assert(v.Len != 0, v.Data != nullptr);
   z_assert(src_v.Len != 0, src_v.Data != nullptr);
 
-  z_Record *r1 = z_RecordNew(z_ROP_UPDATE, k, v);
-  if (r1 == nullptr) {
+  z_Record *r = z_RecordNewByKVV(z_ROP_UPDATE, k, v, src_v);
+  if (r == nullptr) {
     return z_ERR_NOSPACE;
   }
 
-  z_Buffer vv = z_BufferEmpty();
-  z_Record *r2 = z_RecordNew(z_ROP_UPDATE_SRC_VALUE, src_v, vv);
-  if (r2 == nullptr) {
-    z_RecordFree(r1);
-    return z_ERR_NOSPACE;
-  }
+  z_Error ret = z_KVFromRecord(kv, r);
 
-  z_Error ret = z_KVFromRecord(kv, r1, r2);
-
-  z_RecordFree(r1);
-  z_RecordFree(r2);
+  z_RecordFree(r);
   return ret;
 }
 
@@ -464,12 +386,12 @@ z_Error z_KVDelete(z_KV *kv, z_Buffer k) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
 
   z_Buffer v = {};
-  z_Record *r = z_RecordNew(z_ROP_DELETE, k, v);
+  z_Record *r = z_RecordNewByKV(z_ROP_DELETE, k, v);
   if (r == nullptr) {
     return z_ERR_NOSPACE;
   }
 
-  z_Error ret = z_KVFromRecord(kv, r, nullptr);
+  z_Error ret = z_KVFromRecord(kv, r);
   z_RecordFree(r);
   return ret;
 }
