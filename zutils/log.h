@@ -107,9 +107,9 @@ FILE *z_LogFile() {
 #define z_panic(...)                                                           \
   {                                                                            \
     if (z_LogFile() != stdout) {                                               \
-      z_panic_color("\033[;31m", "\033[;0m", z_LogFile(), "%d", 1);            \
+      z_panic_color("", "", z_LogFile(), __VA_ARGS__);                         \
     }                                                                          \
-    z_panic_color("\033[;31m", "\033[;0m", stdout, "%d", 1);                   \
+    z_panic_color("\033[;31m", "\033[;0m", stdout, __VA_ARGS__);               \
     exit(1);                                                                   \
   }
 

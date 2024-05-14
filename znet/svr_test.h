@@ -5,9 +5,27 @@
 #include "ztest/test.h"
 #include "znet/svr.h"
 #include "zepoch/epoch.h"
+#include "zutils/buffer.h"
 
 z_Error z_TestHandle(void *attr, z_Record *req, z_Record **resp) {
   z_KV *kv = (z_KV*)attr;
+  if (req->OP != z_ROP_FIND) {
+    return z_KVFromRecord(kv, req);
+  }
+
+  z_Buffer key = {};
+  z_Error ret = z_RecordKey(req, &key);
+  if (ret != z_OK) {
+    return ret;
+  }
+
+  z_Buffer val = {};
+  ret = z_KVFind(kv, key, &val);
+  if (ret != z_OK) {
+    return ret;
+  }
+
+  *resp = z_RecordNewByKV(req->OP, key, val);
   return z_OK;
 }
 

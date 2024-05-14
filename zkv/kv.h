@@ -266,6 +266,7 @@ z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size,
 
 z_Error z_KVFromRecord(z_KV *kv, z_Record *r) {
   z_assert(kv != nullptr, r != nullptr);
+  z_assert(r->OP != z_ROP_FIND);
 
   z_Error ret = z_OK;
   z_FileRecord fr = {.Record = r};

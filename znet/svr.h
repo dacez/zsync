@@ -71,7 +71,7 @@ void *z_IOProcess(void *ptr) {
       z_defer(z_ReqDestory, &req);
 
       int64_t cli_socket = events[i].ident;
-
+      
       z_Error ret = z_ReqInitFromNet(cli_socket, &req);
       if (ret != z_OK) {
         z_error("z_ReqInitFromNet %d", ret);
@@ -89,7 +89,9 @@ void *z_IOProcess(void *ptr) {
         z_debug("handle error %d", ret);
       }
 
-      resp.ret = ret;
+      resp.Ret.Code = ret;
+      resp.Ret.DataLen = resp.Record != nullptr ? z_RecordLen(resp.Record) : 0;
+
       ret = z_RespToNet(cli_socket, &resp);
       if (ret != z_OK) {
         z_error("z_RespToNet %d", ret);

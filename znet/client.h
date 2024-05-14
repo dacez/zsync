@@ -113,7 +113,7 @@ z_Error z_CliCall(z_Cli *cli, z_Req *req, z_Resp *resp) {
   return z_OK;
 }
 
-void z_CliDestory(z_Cli *cli) {
+void z_CliDestroy(z_Cli *cli) {
   if (cli == nullptr) {
     z_debug("cli == nullptr");
     return;

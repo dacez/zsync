@@ -13,7 +13,7 @@
 void z_ClientTest() {
   int64_t count = 1000;
 
-  z_Cli cli = {};
+  z_unique(z_Cli) cli = {};
   z_Error ret = z_CliInit(&cli, "127.0.0.1", 12301, 16);
   z_ASSERT_TRUE(ret == z_OK);
 
@@ -48,6 +48,11 @@ void z_ClientTest() {
 
     ret = z_CliCall(&cli, &req, &resp);
     if (ret != z_OK) {
+      break;
+    }
+
+    if (resp.Ret.Code != z_OK) {
+      ret = resp.Ret.Code;
       break;
     }
   }
