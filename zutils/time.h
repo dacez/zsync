@@ -17,10 +17,10 @@ int64_t z_NowMS() { return z_NowNS() / 1000000; }
 
 int64_t z_NowS() { return z_NowNS() / 1000000000; }
 
-void z_LocalTime(char local[32]) {
+void z_LocalTime(char local[16]) {
   time_t now = time(NULL);
   struct tm *lt = localtime(&now);
-  strftime(local, 32, "%Y/%m/%d %H:%M:%S", lt);
+  strftime(local, 16, "%H:%M:%S", lt);
 }
 
 #endif
