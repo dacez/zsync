@@ -93,15 +93,14 @@ FILE *z_LogFile() {
     char tail_str[z_LOG_TAIL_LEN] = {};                                        \
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
     if (errno != 0) {                                                          \
-      snprintf(                                                                \
-          log_str, sizeof(log_str),                                            \
-          color                                                                \
-          " %s (%lld) [panic] %s:%d:%s lastsyserror: %s exit\n" color_end,     \
-          time_str, z_ThreadID(), __FILE__, __LINE__, tail_str,                \
-          strerror(errno));                                                    \
+      snprintf(log_str, sizeof(log_str),                                       \
+               color                                                           \
+               "%s (%lld) [panic] %s:%d:%s lastsyserror: %s exit\n" color_end, \
+               time_str, z_ThreadID(), __FILE__, __LINE__, tail_str,           \
+               strerror(errno));                                               \
     } else {                                                                   \
       snprintf(log_str, sizeof(log_str),                                       \
-               color " %s (%lld) [panic] %s:%d:%s exit\n" color_end, time_str, \
+               color "%s (%lld) [panic] %s:%d:%s exit\n" color_end, time_str,  \
                z_ThreadID(), __FILE__, __LINE__, tail_str);                    \
     }                                                                          \
     fprintf(fd, "%s", log_str);                                                \

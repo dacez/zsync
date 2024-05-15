@@ -12,7 +12,7 @@
 #include "zutils/macro_test.h"
 
 int main() {
-  z_LogInit("", 2);
+  z_LogInit("./bin/log.txt", 2);
   z_defer(z_LogDestroy);
 
   z_TEST_START();
