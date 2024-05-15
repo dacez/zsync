@@ -25,7 +25,8 @@ z_Error z_TestHandle(void *attr, z_Record *req, z_Record **resp) {
     return ret;
   }
 
-  *resp = z_RecordNewByKV(req->OP, key, val);
+  z_Buffer empty = {};
+  *resp = z_RecordNewByKV(req->OP, empty, val);
   return z_OK;
 }
 

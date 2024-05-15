@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "zerror/error.h"
+#include "zutils/assert.h"
 #include "zutils/log.h"
 #include "zutils/mem.h"
 
@@ -21,6 +22,10 @@ typedef struct {
 bool z_BufferIsEqual(z_Buffer a, z_Buffer b) {
   if (a.Len != b.Len) {
     return false;
+  }
+
+  if (a.Len == 0) {
+    return true;
   }
 
   return memcmp(a.Data, b.Data, a.Len) == 0;
@@ -82,7 +87,8 @@ z_Buffer z_BufferEmpty() {
 }
 
 bool z_BufferIsEmpty(z_Buffer *b) {
-  if (b->Data == nullptr || b->Len == 0) {
+  z_assert(b->Len != 0 && b->Data != nullptr || b->Len == 0 && b->Data == nullptr);
+  if (b->Len == 0) {
     return true;
   }
 

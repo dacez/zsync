@@ -13,36 +13,37 @@ void *SvrRun(void *) {
   return nullptr;
 }
 
-void *CliRun(void *) {
-  z_ClientTest();
+void *CliRun(void * ptr) {
+  z_ClientTest((z_ClientTestArgs*)ptr);
   return nullptr;
 }
 
 int main() {
+  int64_t thread_count = 1;
+  int64_t test_count = 1;
   z_Error ret = z_LogInit("./bin/log.txt", 2);
   z_ASSERT_TRUE(ret == z_OK);
   z_defer(z_LogDestroy);
-
-  z_TEST_START();
-
-  int64_t count = 1;
-  pthread_t *cli_tids = z_malloc(sizeof(pthread_t) * count);
-  z_defer(
-      ^(pthread_t *ts) {
-        z_free(cli_tids);
-      },
-      cli_tids);
 
   pthread_t tid;
   pthread_create(&tid, nullptr, SvrRun, nullptr);
   sleep(1);
 
-  for (int64_t i = 0; i < count; ++i) {
-    pthread_create(&cli_tids[i], nullptr, CliRun, nullptr);
+  
+  z_TEST_START();
+  z_ClientTestArgs *args = z_malloc(sizeof(z_ClientTestArgs) * thread_count); 
+  z_defer(^{
+    z_free(args);
+  });
+
+  for (int64_t i = 0; i < thread_count; ++i) {
+    args[i].Start = i * test_count / thread_count;
+    args[i].End = args[i].Start + test_count / thread_count;
+    pthread_create(&args[i].Tid, nullptr, CliRun, &args[i]);
   }
 
-  for (int64_t i = 0; i < count; ++i) {
-    pthread_join(cli_tids[i], nullptr);
+  for (int64_t i = 0; i < thread_count; ++i) {
+    pthread_join(args[i].Tid, nullptr);
   }
 
   z_TEST_END();

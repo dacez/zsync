@@ -68,7 +68,7 @@ void *z_IOProcess(void *ptr) {
 
     for (int64_t i = 0; i < ev_count; ++i) {
       z_Req req = {};
-      z_defer(z_ReqDestory, &req);
+      z_defer(z_ReqDestroy, &req);
 
       int64_t cli_socket = events[i].ident;
       
@@ -83,7 +83,7 @@ void *z_IOProcess(void *ptr) {
       }
 
       z_Resp resp = {};
-      z_defer(z_RespDestory, &resp);
+      z_defer(z_RespDestroy, &resp);
       ret = svr->Handle(svr->Attr, req.Record, &resp.Record);
       if (ret != z_OK) {
         z_debug("handle error %d", ret);
