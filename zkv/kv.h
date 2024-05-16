@@ -203,7 +203,6 @@ z_Error z_mapInitFromFile(z_Map *m, char *path, int64_t *last_offset) {
 
 void z_KVDestroy(z_KV *kv) {
   if (kv == nullptr) {
-    z_debug("kv == nullptr");
     return;
   }
 

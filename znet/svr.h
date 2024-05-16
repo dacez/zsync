@@ -46,6 +46,14 @@ z_Error z_SvrEventDel(int64_t kq, int64_t cli_socket) {
   return z_OK;
 }
 
+void z_SvrConnectClose(int64_t kq, int64_t cli_socket) {
+  if (z_SvrEventDel(kq, cli_socket) != z_OK) {
+    z_error("z_SvrEventDel");
+  }
+  close(cli_socket);
+  return;
+}
+
 void *z_IOProcess(void *ptr) {
   if (ptr == nullptr) {
     z_error("ptr == nullptr");
@@ -56,7 +64,7 @@ void *z_IOProcess(void *ptr) {
   z_defer(z_ThreadIDDestory, svr->Epoch->Ts);
 
   int64_t kq = svr->KQs[z_ThreadID()];
-  z_info("IOThread Start %lld", z_ThreadID());
+  z_debug("IOThread Start %lld", z_ThreadID());
 
   while (1) {
     struct kevent events[z_KQUEUE_BACKLOG] = {};
@@ -67,18 +75,21 @@ void *z_IOProcess(void *ptr) {
     }
 
     for (int64_t i = 0; i < ev_count; ++i) {
+      int64_t cli_socket = events[i].ident;
+
+      if (events[i].flags & EV_EOF) {
+        z_debug("client close connection");
+        z_SvrConnectClose(kq, cli_socket);
+        continue;
+      }
+
       z_Req req = {};
       z_defer(z_ReqDestroy, &req);
 
-      int64_t cli_socket = events[i].ident;
-      
       z_Error ret = z_ReqInitFromNet(cli_socket, &req);
       if (ret != z_OK) {
         z_error("z_ReqInitFromNet %d", ret);
-        if (z_SvrEventDel(kq, cli_socket) != z_OK) {
-          z_error("z_SvrEventDel");
-        }
-        close(cli_socket);
+        z_SvrConnectClose(kq, cli_socket);
         continue;
       }
 
@@ -95,10 +106,7 @@ void *z_IOProcess(void *ptr) {
       ret = z_RespToNet(cli_socket, &resp);
       if (ret != z_OK) {
         z_error("z_RespToNet %d", ret);
-        if (z_SvrEventDel(kq, cli_socket) != z_OK) {
-          z_error("z_SvrEventDel");
-        }
-        close(cli_socket);
+        z_SvrConnectClose(kq, cli_socket);
         continue;
       }
     }
@@ -175,7 +183,7 @@ z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
     }
   }
 
-  z_info("server started on %s:%d", svr->IP, svr->Port);
+  z_debug("server started on %s:%d", svr->IP, svr->Port);
   int64_t pids_len = svr->Epoch->Ts->Len;
   pthread_t *pids = z_malloc(sizeof(pthread_t) * pids_len);
   z_defer(
@@ -212,8 +220,8 @@ z_Error z_SvrRun(z_Svr *svr, const char *ip, uint16_t port, z_Epoch *epoch,
     }
 
     ipv4_addr *ipv4 = (ipv4_addr *)&cli_addr;
-    z_info("new connection %s:%u", inet_ntoa(ipv4->sin_addr),
-           ntohs(ipv4->sin_port));
+    z_debug("new connection %s:%u", inet_ntoa(ipv4->sin_addr),
+            ntohs(ipv4->sin_port));
 
     int64_t kq = svr->KQs[cli_socket % kqs_len];
     z_Error ret = z_SvrEventAdd(kq, cli_socket);

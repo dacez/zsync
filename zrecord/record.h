@@ -7,6 +7,7 @@
 #include "zutils/log.h"
 #include "zutils/mem.h"
 #include <stdint.h>
+#include <string.h>
 
 typedef enum uint8_t {
   z_ROP_INSERT = 1,
@@ -121,7 +122,7 @@ z_Error z_RecordValue(z_Record *r, z_Buffer *val) {
 }
 
 z_Error z_RecordSrcValue(z_Record *r, z_Buffer *src_val) {
-  z_assert(r!= nullptr, r->OP == z_ROP_UPDATE);
+  z_assert(r != nullptr, r->OP == z_ROP_UPDATE);
   return z_UpdateRecordSrcValue((z_UpdateRecord *)r, src_val);
 }
 
@@ -189,11 +190,14 @@ z_Record *z_RecordNewByKV(uint8_t op, z_Buffer key, z_Buffer val) {
   return ret_record;
 }
 
-z_Record *z_RecordNewByKVV(uint8_t op, z_Buffer key, z_Buffer val, z_Buffer src_val) {
+z_Record *z_RecordNewByKVV(uint8_t op, z_Buffer key, z_Buffer val,
+                           z_Buffer src_val) {
   z_assert(op == z_ROP_UPDATE);
-  z_UpdateRecord record = {.OP = op, .Len = key.Len+val.Len+src_val.Len+sizeof(z_UpdateRecordKVV)};
-  int64_t len = z_RecordLen((z_Record*)&record);
-  z_UpdateRecord *ret_record = (z_UpdateRecord*)z_RecordNewByLen(len);
+  z_UpdateRecord record = {.OP = op,
+                           .Len = key.Len + val.Len + src_val.Len +
+                                  sizeof(z_UpdateRecordKVV)};
+  int64_t len = z_RecordLen((z_Record *)&record);
+  z_UpdateRecord *ret_record = (z_UpdateRecord *)z_RecordNewByLen(len);
   if (ret_record == nullptr) {
     z_error("ret_record == nullptr");
     return nullptr;
@@ -205,25 +209,42 @@ z_Record *z_RecordNewByKVV(uint8_t op, z_Buffer key, z_Buffer val, z_Buffer src_
 
   *ret_record = record;
   if (key.Len > 0) {
-    memcpy((int8_t*)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV), key.Data, key.Len);
+    memcpy((int8_t *)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV),
+           key.Data, key.Len);
   }
   if (val.Len > 0) {
-    memcpy((int8_t*)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV) + kvv->KeyLen, val.Data, val.Len);
+    memcpy((int8_t *)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV) +
+               kvv->KeyLen,
+           val.Data, val.Len);
   }
   if (src_val.Len > 0) {
-    memcpy((int8_t*)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV) + kvv->KeyLen + kvv->ValLen, src_val.Data, src_val.Len);
+    memcpy((int8_t *)ret_record + sizeof(z_Record) + sizeof(z_UpdateRecordKVV) +
+               kvv->KeyLen + kvv->ValLen,
+           src_val.Data, src_val.Len);
   }
 
-  return (z_Record*)ret_record;
+  return (z_Record *)ret_record;
 }
 
 void z_RecordFree(z_Record *r) {
   if (r == nullptr) {
-    z_debug("r == nullptr");
     return;
   }
 
   z_free(r);
+}
+
+void z_RecordPrint(z_Record *r) {
+  z_Buffer k, v;
+  z_RecordKey(r, &k);
+  z_RecordValue(r, &v);
+  char ks[32];
+  char vs[32];
+
+  z_BufferStr(k, ks);
+  z_BufferStr(v, vs);
+  z_debug("OP %u Sum %u KeyLen %u ValLen %u key %s val %s", r->OP, r->Sum,
+         r->KeyLen, r->ValLen, ks, vs);
 }
 
 #endif

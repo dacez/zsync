@@ -115,12 +115,10 @@ z_Error z_CliCall(z_Cli *cli, z_Req *req, z_Resp *resp) {
 
 void z_CliDestroy(z_Cli *cli) {
   if (cli == nullptr) {
-    z_debug("cli == nullptr");
     return;
   }
 
   if (cli->Conns == nullptr) {
-    z_debug("cli->Conns == nullptr");
     return;
   }
 

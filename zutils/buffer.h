@@ -33,7 +33,6 @@ bool z_BufferIsEqual(z_Buffer a, z_Buffer b) {
 
 void z_BufferDestroy(z_Buffer *s) {
   if (s == nullptr || s->Data == nullptr) {
-    z_debug("s == nullptr || s->Data == nullptr");
     return;
   }
 

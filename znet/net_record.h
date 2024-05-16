@@ -92,12 +92,10 @@ z_Error z_ReqToNet(int64_t cli_socket, z_Req *req) {
 
 void z_ReqDestroy(z_Req *req) {
   if (req == nullptr) {
-    z_debug("req == nullptr");
     return;
   }
 
   if (req->Record == nullptr) {
-    z_debug("req->Record == nullptr");
     return;
   }
 
@@ -168,12 +166,10 @@ z_Error z_RespToNet(int64_t cli_socket, z_Resp *resp) {
 
 void z_RespDestroy(z_Resp *resp) {
   if (resp == nullptr) {
-    z_debug("resp == nullptr");
     return;
   }
 
   if (resp->Record == nullptr) {
-    z_debug("resp->Record == nullptr");
     return;
   }
 

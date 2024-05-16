@@ -45,7 +45,6 @@ z_Error z_WriterInit(z_Writer *wr, char *path, int64_t max_size) {
 
 void z_WriterDestroy(z_Writer *wr) {
   if (wr == nullptr || wr->File == nullptr) {
-    z_debug("wr == nullptr || wr->File == nullptr");
     return;
   }
 
@@ -102,7 +101,6 @@ typedef struct {
 
 z_Error z_ReaderInit(z_Reader *rd, char *path) {
   if (rd == nullptr || path == nullptr) {
-    z_debug("rd == nullptr || path == nullptr");
     return z_ERR_INVALID_DATA;
   }
 
@@ -117,7 +115,6 @@ z_Error z_ReaderInit(z_Reader *rd, char *path) {
 
 void z_ReaderDestroy(z_Reader *rd) {
   if (rd == nullptr) {
-    z_debug("rd == nullptr");
     return;
   }
 

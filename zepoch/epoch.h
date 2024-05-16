@@ -30,17 +30,12 @@ void z_EpochDestory(z_Epoch *e) {
   if (e->LocalEpochs != nullptr) {
     z_free(e->LocalEpochs);
     e->LocalEpochs = nullptr;
-  } else {
-    z_debug("e->LocalEpochs == nullptr");
   }
 
   if (e->Actions != nullptr) {
     z_free(e->Actions);
     e->Actions = nullptr;
-  } else {
-    z_debug("e->Actions = nullptr");
   }
-
   return;
 }
 

@@ -138,6 +138,10 @@ z_Error z_LogInit(char *path, int64_t log_level) {
   return z_OK;
 }
 
-void z_LogDestroy() { fclose(z_log_file); }
+void z_LogDestroy() {
+  if (z_log_file != nullptr) {
+    fclose(z_log_file);
+  }
+}
 
 #endif

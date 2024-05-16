@@ -44,7 +44,6 @@ z_Error z_CacheInit(z_Cache *cache, int64_t size) {
 
 void z_CacheDestory(z_Cache *cache) {
   if (cache == nullptr || cache->Data == nullptr) {
-    z_debug("cache == nullptr || cache->Data == nullptr");
     return;
   }
   atomic_store(&cache->Start, 0);

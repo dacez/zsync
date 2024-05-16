@@ -33,14 +33,14 @@ z_Error z_InsertTest(z_Cli *cli, int64_t i) {
   if (ret != z_OK) {
     return ret;
   }
-
+  
   ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
 
   if (resp.Ret.Code != z_OK) {
-    return ret;
+    return resp.Ret.Code;
   }
 
   return z_OK;
@@ -71,7 +71,7 @@ z_Error z_DeleteTest(z_Cli *cli, int64_t i) {
   }
 
   if (resp.Ret.Code != z_OK) {
-    return ret;
+    return resp.Ret.Code;
   }
 
   return z_OK;
@@ -108,7 +108,7 @@ z_Error z_BlindUpdateTest(z_Cli *cli, int64_t i, int64_t ii) {
   }
 
   if (resp.Ret.Code != z_OK) {
-    return ret;
+    return resp.Ret.Code;
   }
 
   return z_OK;
@@ -153,7 +153,7 @@ z_Error z_UpdateTest(z_Cli *cli, int64_t i, int64_t ii, int64_t src_i) {
   }
 
   if (resp.Ret.Code != z_OK) {
-    return ret;
+    return resp.Ret.Code;
   }
 
   return z_OK;
@@ -168,7 +168,7 @@ z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
   char key[32] = {};
   char val_ii[32] = {};
   sprintf(key, "key%lld", i);
-  sprintf(val_ii, "val%lld", ii);
+  sprintf(val_ii, "value%lld", ii);
 
   z_Error ret = z_BufferInit(&k, (int8_t *)key, strlen(key));
   if (ret != z_OK) {
@@ -191,18 +191,13 @@ z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
   }
 
   if (resp.Ret.Code != z_OK) {
-    return ret;
+    return resp.Ret.Code;
   }
 
-  z_unique(z_Buffer) resp_key;
-  z_unique(z_Buffer) resp_val;
-  ret = z_RecordKey(resp.Record, &resp_key);
+  z_Buffer resp_val;
+  ret = z_RecordValue(resp.Record, &resp_val);
   if (ret != z_OK) {
     return ret;
-  }
-
-  if (z_BufferIsEqual(resp_key, z_BufferEmpty()) == false) {
-    return z_ERR_INVALID_DATA;
   }
 
   if (z_BufferIsEqual(resp_val, v_ii) == false) {
@@ -225,7 +220,6 @@ void z_ClientTest(z_ClientTestArgs *args) {
   z_ASSERT_TRUE(ret == z_OK);
 
   for (int64_t i = args->Start; i < args->End; ++i) {
-    int64_t reverse = args->End - args->Start - i - 1;
     ret = z_InsertTest(&cli, i);
     if (ret != z_OK) {
       break;
@@ -234,16 +228,14 @@ void z_ClientTest(z_ClientTestArgs *args) {
   z_ASSERT_TRUE(ret == z_OK);
 
   for (int64_t i = args->Start; i < args->End; ++i) {
-    int64_t reverse = args->End - args->Start - i - 1;
     ret = z_InsertTest(&cli, i);
     if (ret != z_ERR_EXIST) {
       break;
     }
   }
-  z_ASSERT_TRUE(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_ERR_EXIST);
 
   for (int64_t i = args->Start; i < args->End; ++i) {
-    int64_t reverse = args->End - args->Start - i - 1;
     ret = z_FindTest(&cli, i, i);
     if (ret != z_OK) {
       break;
@@ -258,7 +250,7 @@ void z_ClientTest(z_ClientTestArgs *args) {
       break;
     }
   }
-  z_ASSERT_TRUE(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_ERR_CONFLICT);
 
   for (int64_t i = args->Start; i < args->End; ++i) {
     int64_t reverse = args->End - args->Start - i - 1;
@@ -306,25 +298,22 @@ void z_ClientTest(z_ClientTestArgs *args) {
   z_ASSERT_TRUE(ret == z_OK);
 
   for (int64_t i = args->Start; i < args->End; ++i) {
-    int64_t reverse = args->End - args->Start - i - 1;
     ret = z_DeleteTest(&cli, i);
     if (ret != z_ERR_NOT_FOUND) {
       break;
     }
   }
-  z_ASSERT_TRUE(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_ERR_NOT_FOUND);
 
   for (int64_t i = args->Start; i < args->End; ++i) {
-    int64_t reverse = args->End - args->Start - i - 1;
     ret = z_FindTest(&cli, i, i);
     if (ret != z_ERR_NOT_FOUND) {
       break;
     }
   }
-  z_ASSERT_TRUE(ret == z_OK);
+  z_ASSERT_TRUE(ret == z_ERR_NOT_FOUND);
 
   for (int64_t i = args->Start; i < args->End; ++i) {
-    int64_t reverse = args->End - args->Start - i - 1;
     ret = z_InsertTest(&cli, i);
     if (ret != z_OK) {
       break;

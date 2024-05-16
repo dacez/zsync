@@ -25,7 +25,6 @@ typedef struct {
 
 void z_ListDestroy(z_List *l) {
   if (l == nullptr || l->Records == nullptr) {
-    z_debug("l == nullptr || l->List == nullptr");
     return;
   }
 
@@ -252,7 +251,6 @@ z_Error z_BucketInit(z_Bucket *b) {
 
 void z_BucketDestroy(z_Bucket *b) {
   if (b == nullptr) {
-    z_debug("b == nullptr");
     return;
   }
 
@@ -390,7 +388,6 @@ typedef struct {
 
 void z_MapDestroy(z_Map *m) {
   if (m == nullptr || m->Buckets == nullptr) {
-    z_debug("m == nullptr || m->Buckets == nullptr");
     return;
   }
 
