@@ -26,7 +26,7 @@ typedef struct {
   z_Threads *Ts;
 } z_Epoch;
 
-void z_EpochDestory(z_Epoch *e) {
+void z_EpochDestroy(z_Epoch *e) {
   if (e->LocalEpochs != nullptr) {
     z_free(e->LocalEpochs);
     e->LocalEpochs = nullptr;
@@ -53,7 +53,7 @@ z_Error z_EpochInit(z_Epoch *e, int64_t action_len, z_Threads *ts) {
 
   e->Actions = z_malloc(sizeof(z_EpochAction) * e->ActionsLen);
   if (e->Actions == nullptr) {
-    z_error("e->Actions == nullptr") z_EpochDestory(e);
+    z_error("e->Actions == nullptr") z_EpochDestroy(e);
     return z_ERR_NOSPACE;
   }
 

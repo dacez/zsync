@@ -2,7 +2,7 @@
 #define z_ERROR_H
 
 #include <stdint.h>
-typedef enum int8_t {
+typedef enum : uint8_t {
   z_OK = 0,
   z_ERR_INVALID_DATA = 1,
   z_ERR_NOSPACE = 2,

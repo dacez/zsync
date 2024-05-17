@@ -17,6 +17,6 @@ void z_EpochTest() {
   z_ASSERT_TRUE(tid != z_INVALID_THREAD_ID);
 
   z_ThreadIDDestory(&ts);
-  z_ThreadsDestory(&ts);
-  z_EpochDestory(&e);
+  z_ThreadsDestroy(&ts);
+  z_EpochDestroy(&e);
 }

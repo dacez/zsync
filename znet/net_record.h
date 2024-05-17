@@ -13,9 +13,11 @@ typedef struct {
 } z_Req;
 
 typedef struct {
-  z_Error Code;
-  uint32_t DataLen;
+  uint64_t Code : 8;
+  uint64_t reserve:24;
+  uint32_t DataLen:32;
 } z_Ret;
+static_assert(sizeof(z_Ret) == 8);
 
 typedef struct {
   z_Ret Ret;

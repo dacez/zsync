@@ -23,4 +23,10 @@ void z_LocalTime(char local[16]) {
   strftime(local, 16, "%H:%M:%S", lt);
 }
 
+void z_LocalDate(char local[32]) {
+  time_t now = time(NULL);
+  struct tm *lt = localtime(&now);
+  strftime(local, 32, "%Y/%m/%d %H:%M:%S", lt);
+}
+
 #endif

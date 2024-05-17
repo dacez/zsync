@@ -7,7 +7,9 @@
 #include <unistd.h>
 
 void *SvrRun(void *) {
-  z_SvrKV();
+  char *bp = "./bin/binlog.log";
+  remove(bp);
+  z_SvrKV(bp, 8);
   return nullptr;
 }
 

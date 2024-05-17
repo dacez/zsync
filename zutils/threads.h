@@ -31,7 +31,7 @@ z_Error z_ThreadsInit(z_Threads *t, int64_t len) {
   return z_OK;
 }
 
-void z_ThreadsDestory(z_Threads *t) {
+void z_ThreadsDestroy(z_Threads *t) {
   if (t->Locks == nullptr) {
     return;
   }

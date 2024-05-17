@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef enum uint8_t {
+typedef enum : uint8_t {
   z_ROP_INSERT = 1,
   z_ROP_DELETE = 2,
   z_ROP_UPDATE = 3,
@@ -244,7 +244,7 @@ void z_RecordPrint(z_Record *r) {
   z_BufferStr(k, ks);
   z_BufferStr(v, vs);
   z_debug("OP %u Sum %u KeyLen %u ValLen %u key %s val %s", r->OP, r->Sum,
-         r->KeyLen, r->ValLen, ks, vs);
+          r->KeyLen, r->ValLen, ks, vs);
 }
 
 #endif

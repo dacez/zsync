@@ -4,8 +4,8 @@
 void z_KVTest() {
 
   char *binlog_path = "./bin/binlog.log";
-  z_KV kv;
   remove(binlog_path);
+  z_KV kv;
   z_Error ret = z_KVInit(&kv, binlog_path, 1024 * 1024 * 1024, 1);
   z_ASSERT_TRUE(ret == z_OK);
 
