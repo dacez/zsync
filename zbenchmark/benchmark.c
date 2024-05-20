@@ -1,12 +1,14 @@
 #include "zerror/error.h"
 #include "znet/client.h"
 #include "znet/svr_kv.h"
+#include "zutils/buffer.h"
 #include "zutils/log.h"
 #include "zutils/time.h"
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*
 16 个线程
@@ -29,29 +31,20 @@ typedef struct {
 z_Error z_BenchmarkInsertOne(z_Cli *cli, int64_t i) {
   z_unique(z_Req) req = {};
   z_unique(z_Resp) resp = {};
-  z_unique(z_Buffer) k = {};
-  z_unique(z_Buffer) v = {};
 
   char key[32] = {};
   char val[32] = {};
   sprintf(key, "key%lld", i);
   sprintf(val, "value%lld", i);
-
-  z_Error ret = z_BufferInit(&k, (int8_t *)key, strlen(key));
-  if (ret != z_OK) {
-    return ret;
-  }
-  ret = z_BufferInit(&v, (int8_t *)val, strlen(val));
-  if (ret != z_OK) {
-    return ret;
-  }
+  z_ConstBuffer k = {.Data = (const int8_t *)key, .Len = strlen(key)};
+  z_ConstBuffer v = {.Data = (const int8_t *)val, .Len = strlen(val)};
 
   req.Record = z_RecordNewByKV(z_ROP_INSERT, k, v);
-  if (ret != z_OK) {
-    return ret;
+  if (req.Record == nullptr) {
+    return z_ERR_NOSPACE;
   }
 
-  ret = z_CliCall(cli, &req, &resp);
+  z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
@@ -66,30 +59,20 @@ z_Error z_BenchmarkInsertOne(z_Cli *cli, int64_t i) {
 z_Error z_BenchmarkFindOne(z_Cli *cli, int64_t i, int64_t ii) {
   z_unique(z_Req) req = {};
   z_unique(z_Resp) resp = {};
-  z_unique(z_Buffer) k = {};
-  z_unique(z_Buffer) v_ii = {};
 
   char key[32] = {};
-  char val_ii[32] = {};
+  char val[32] = {};
   sprintf(key, "key%lld", i);
-  sprintf(val_ii, "value%lld", ii);
+  sprintf(val, "value%lld", ii);
+  z_ConstBuffer k = {.Data = (const int8_t *)key, .Len = strlen(key)};
+  z_ConstBuffer v = {.Data = (const int8_t *)val, .Len = strlen(val)};
 
-  z_Error ret = z_BufferInit(&k, (int8_t *)key, strlen(key));
-  if (ret != z_OK) {
-    return ret;
+  req.Record = z_RecordNewByKV(z_ROP_FIND, k, z_ConstBufferEmpty());
+  if (req.Record == nullptr) {
+    return z_ERR_NOSPACE;
   }
 
-  ret = z_BufferInit(&v_ii, (int8_t *)val_ii, strlen(val_ii));
-  if (ret != z_OK) {
-    return ret;
-  }
-
-  req.Record = z_RecordNewByKV(z_ROP_FIND, k, z_BufferEmpty());
-  if (ret != z_OK) {
-    return ret;
-  }
-
-  ret = z_CliCall(cli, &req, &resp);
+  z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
@@ -98,13 +81,13 @@ z_Error z_BenchmarkFindOne(z_Cli *cli, int64_t i, int64_t ii) {
     return resp.Ret.Code;
   }
 
-  z_Buffer resp_val;
+  z_ConstBuffer resp_val;
   ret = z_RecordValue(resp.Record, &resp_val);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (z_BufferIsEqual(resp_val, v_ii) == false) {
+  if (z_BufferIsEqual(&resp_val, &v) == false) {
     return z_ERR_INVALID_DATA;
   }
 
@@ -184,8 +167,10 @@ int main() {
   char date[32] = {};
   z_LocalDate(date);
   fprintf(bmFile, "======== %s ========\n", date);
-  fprintf(bmFile, "z_BenchmarkInsert: %lld ms key_count %lld\n", z_NowMS() - start, key_count);
-  printf("z_BenchmarkInsert: %lld ms key_count %lld\n", z_NowMS() - start, key_count);
+  fprintf(bmFile, "z_BenchmarkInsert: %lld ms key_count %lld\n",
+          z_NowMS() - start, key_count);
+  printf("z_BenchmarkInsert: %lld ms key_count %lld\n", z_NowMS() - start,
+         key_count);
 
   start = z_NowMS();
   for (int64_t i = 0; i < thread_count; ++i) {
@@ -196,8 +181,10 @@ int main() {
   for (int64_t i = 0; i < thread_count; ++i) {
     pthread_join(args[i].Tid, nullptr);
   }
-  fprintf(bmFile, "z_BenchmarkFind: %lld ms key_count %lld\n\n", z_NowMS() - start, key_count);
-  printf("z_BenchmarkFind: %lld ms key_count %lld\n", z_NowMS() - start, key_count);
+  fprintf(bmFile, "z_BenchmarkFind: %lld ms key_count %lld\n\n",
+          z_NowMS() - start, key_count);
+  printf("z_BenchmarkFind: %lld ms key_count %lld\n", z_NowMS() - start,
+         key_count);
 
   return 0;
 }

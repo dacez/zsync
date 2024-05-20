@@ -15,7 +15,7 @@ typedef struct {
   int64_t Offset;
 } z_MapRecord;
 
-typedef bool z_MapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset);
+typedef bool z_MapIsEqual(void *attr, z_ConstBuffer key, z_ConstBuffer value, int64_t offset);
 
 typedef struct {
   int16_t Pos;
@@ -73,7 +73,7 @@ z_Error z_ListGrow(z_List *l) {
   return z_OK;
 }
 
-z_Error z_ListFind(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
+z_Error z_ListFind(z_List *l, z_ConstBuffer k, z_MapRecord r, void *attr,
                    z_MapIsEqual *isEqual, z_MapRecord **record) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr || record == nullptr) {
@@ -91,7 +91,7 @@ z_Error z_ListFind(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
       } else {
         z_debug("i %d hash %llu arg_offset %lld list_offset %lld", i, r.Hash,
                 r.Offset, l->Records[i].Offset);
-        if (isEqual(attr, k, z_BufferEmpty(), l->Records[i].Offset) == true) {
+        if (isEqual(attr, k, z_ConstBufferEmpty(), l->Records[i].Offset) == true) {
           *record = &l->Records[i];
           return z_OK;
         }
@@ -103,7 +103,7 @@ z_Error z_ListFind(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
   return z_ERR_NOT_FOUND;
 }
 
-z_Error z_ListInsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
+z_Error z_ListInsert(z_List *l, z_ConstBuffer k, z_MapRecord r, void *attr,
                      z_MapIsEqual *isEqual) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -134,7 +134,7 @@ z_Error z_ListInsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
 }
 
 
-z_Error z_ListForceUpdate(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
+z_Error z_ListForceUpdate(z_List *l, z_ConstBuffer k, z_MapRecord r, void *attr,
                           z_MapIsEqual *isEqual) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -153,7 +153,7 @@ z_Error z_ListForceUpdate(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
   return z_OK;
 }
 
-z_Error z_ListForceUpsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
+z_Error z_ListForceUpsert(z_List *l, z_ConstBuffer k, z_MapRecord r, void *attr,
                           z_MapIsEqual *isEqual) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -185,7 +185,7 @@ z_Error z_ListForceUpsert(z_List *l, z_Buffer k, z_MapRecord r, void *attr,
   return z_OK;
 }
 
-z_Error z_ListUpdate(z_List *l, z_Buffer k, z_MapRecord r, z_Buffer src_v,
+z_Error z_ListUpdate(z_List *l, z_ConstBuffer k, z_MapRecord r, z_ConstBuffer src_v,
                      void *attr, z_MapIsEqual *isEqual) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -200,7 +200,7 @@ z_Error z_ListUpdate(z_List *l, z_Buffer k, z_MapRecord r, z_Buffer src_v,
     return ret;
   }
 
-  if (isEqual(attr, z_BufferEmpty(), src_v, record->Offset) == false) {
+  if (isEqual(attr, z_ConstBufferEmpty(), src_v, record->Offset) == false) {
     return z_ERR_CONFLICT;
   }
 
@@ -208,7 +208,7 @@ z_Error z_ListUpdate(z_List *l, z_Buffer k, z_MapRecord r, z_Buffer src_v,
   return z_OK;
 }
 
-z_Error z_ListDelete(z_List *l, z_Buffer k, uint64_t hash, void *attr,
+z_Error z_ListDelete(z_List *l, z_ConstBuffer k, uint64_t hash, void *attr,
                      z_MapIsEqual *isEqual) {
   if (l == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -220,7 +220,7 @@ z_Error z_ListDelete(z_List *l, z_Buffer k, uint64_t hash, void *attr,
   int16_t ii = 0;
   for (int16_t i = 0; i < l->Pos; ++i) {
     if (l->Records[i].Hash != hash ||
-        isEqual(attr, k, z_BufferEmpty(), l->Records[i].Offset) != true) {
+        isEqual(attr, k, z_ConstBufferEmpty(), l->Records[i].Offset) != true) {
       l->Records[ii] = l->Records[i];
       ++ii;
     }
@@ -261,7 +261,7 @@ void z_BucketDestroy(z_Bucket *b) {
   return;
 }
 
-z_Error z_BucketInsert(z_Bucket *b, z_Buffer k, uint64_t hash, int64_t offset,
+z_Error z_BucketInsert(z_Bucket *b, z_ConstBuffer k, uint64_t hash, int64_t offset,
                        void *attr, z_MapIsEqual *isEqual) {
 
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
@@ -281,7 +281,7 @@ z_Error z_BucketInsert(z_Bucket *b, z_Buffer k, uint64_t hash, int64_t offset,
   return ret;
 }
 
-z_Error z_BucketFind(z_Bucket *b, z_Buffer k, uint64_t hash, void *attr,
+z_Error z_BucketFind(z_Bucket *b, z_ConstBuffer k, uint64_t hash, void *attr,
                      z_MapIsEqual *isEqual, int64_t *offset) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr || offset == nullptr) {
@@ -304,7 +304,7 @@ z_Error z_BucketFind(z_Bucket *b, z_Buffer k, uint64_t hash, void *attr,
   return ret;
 }
 
-z_Error z_BucketForceUpdate(z_Bucket *b, z_Buffer k, uint64_t hash,
+z_Error z_BucketForceUpdate(z_Bucket *b, z_ConstBuffer k, uint64_t hash,
                             int64_t offset, void *attr, z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -323,7 +323,7 @@ z_Error z_BucketForceUpdate(z_Bucket *b, z_Buffer k, uint64_t hash,
   return ret;
 }
 
-z_Error z_BucketForceUpsert(z_Bucket *b, z_Buffer k, uint64_t hash,
+z_Error z_BucketForceUpsert(z_Bucket *b, z_ConstBuffer k, uint64_t hash,
                             int64_t offset, void *attr, z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -342,8 +342,8 @@ z_Error z_BucketForceUpsert(z_Bucket *b, z_Buffer k, uint64_t hash,
   return ret;
 } 
 
-z_Error z_BucketUpdate(z_Bucket *b, z_Buffer k, uint64_t hash, int64_t offset,
-                       z_Buffer src_v, void *attr, z_MapIsEqual *isEqual) {
+z_Error z_BucketUpdate(z_Bucket *b, z_ConstBuffer k, uint64_t hash, int64_t offset,
+                       z_ConstBuffer src_v, void *attr, z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
     z_error("b == nullptr || k.Data == nullptr || k.Len == 0 || attr == "
@@ -361,7 +361,7 @@ z_Error z_BucketUpdate(z_Bucket *b, z_Buffer k, uint64_t hash, int64_t offset,
   return ret;
 }
 
-z_Error z_BucketDelete(z_Bucket *b, z_Buffer k, uint64_t hash, void *attr,
+z_Error z_BucketDelete(z_Bucket *b, z_ConstBuffer k, uint64_t hash, void *attr,
                        z_MapIsEqual *isEqual) {
   if (b == nullptr || k.Data == nullptr || k.Len == 0 || attr == nullptr ||
       isEqual == nullptr) {
@@ -431,7 +431,7 @@ z_Error z_MapInit(z_Map *m, int64_t buckets_len, void *attr,
   return ret;
 }
 
-z_Error z_MapInsert(z_Map *m, z_Buffer k, int64_t offset) {
+z_Error z_MapInsert(z_Map *m, z_ConstBuffer k, int64_t offset) {
   if (m == nullptr || k.Data == nullptr || k.Len == 0) {
     z_error("m == nullptr || k.Data == nullptr || k.Len == 0");
     return z_ERR_INVALID_DATA;
@@ -442,7 +442,7 @@ z_Error z_MapInsert(z_Map *m, z_Buffer k, int64_t offset) {
   return z_BucketInsert(b, k, hash, offset, m->Attr, m->IsEqual);
 }
 
-z_Error z_MapFind(z_Map *m, z_Buffer k, int64_t *offset) {
+z_Error z_MapFind(z_Map *m, z_ConstBuffer k, int64_t *offset) {
   if (m == nullptr || k.Data == nullptr || k.Len == 0 || offset == nullptr) {
     z_error(
         "m == nullptr || k.Data == nullptr || k.Len == 0 || offset == nullptr");
@@ -454,7 +454,7 @@ z_Error z_MapFind(z_Map *m, z_Buffer k, int64_t *offset) {
   return z_BucketFind(b, k, hash, m->Attr, m->IsEqual, offset);
 }
 
-z_Error z_MapForceUpdate(z_Map *m, z_Buffer k, int64_t offset) {
+z_Error z_MapForceUpdate(z_Map *m, z_ConstBuffer k, int64_t offset) {
   if (m == nullptr || k.Data == nullptr || k.Len == 0) {
     z_error("m == nullptr || k.Data == nullptr || k.Len == 0");
     return z_ERR_INVALID_DATA;
@@ -465,7 +465,7 @@ z_Error z_MapForceUpdate(z_Map *m, z_Buffer k, int64_t offset) {
   return z_BucketForceUpdate(b, k, hash, offset, m->Attr, m->IsEqual);
 }
 
-z_Error z_MapForceUpsert(z_Map *m, z_Buffer k, int64_t offset) {
+z_Error z_MapForceUpsert(z_Map *m, z_ConstBuffer k, int64_t offset) {
   if (m == nullptr || k.Data == nullptr || k.Len == 0) {
     z_error("m == nullptr || k.Data == nullptr || k.Len == 0");
     return z_ERR_INVALID_DATA;
@@ -476,7 +476,7 @@ z_Error z_MapForceUpsert(z_Map *m, z_Buffer k, int64_t offset) {
   return z_BucketForceUpsert(b, k, hash, offset, m->Attr, m->IsEqual);
 }
 
-z_Error z_MapUpdate(z_Map *m, z_Buffer k, int64_t offset, z_Buffer src_v) {
+z_Error z_MapUpdate(z_Map *m, z_ConstBuffer k, int64_t offset, z_ConstBuffer src_v) {
   if (m == nullptr || k.Data == nullptr || k.Len == 0) {
     z_error("m == nullptr || k.Data == nullptr || k.Len == 0");
     return z_ERR_INVALID_DATA;
@@ -487,7 +487,7 @@ z_Error z_MapUpdate(z_Map *m, z_Buffer k, int64_t offset, z_Buffer src_v) {
   return z_BucketUpdate(b, k, hash, offset, src_v, m->Attr, m->IsEqual);
 }
 
-z_Error z_MapDelete(z_Map *m, z_Buffer k) {
+z_Error z_MapDelete(z_Map *m, z_ConstBuffer k) {
   if (m == nullptr || k.Data == nullptr || k.Len == 0) {
     z_error("m == nullptr || k.Data == nullptr || k.Len == 0 ");
     return z_ERR_INVALID_DATA;
@@ -506,7 +506,7 @@ typedef enum {
   z_MAP_RECORD_OP_FORCE_UPSERT = 5,
 } z_MapRecordOP;
 
-z_Error z_MapCheck(z_Map *m, z_MapRecordOP op, z_Buffer k, z_Buffer src_v) {
+z_Error z_MapCheck(z_Map *m, z_MapRecordOP op, z_ConstBuffer k, z_ConstBuffer src_v) {
   return z_OK;
 }
 #endif

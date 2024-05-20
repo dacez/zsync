@@ -81,7 +81,7 @@ z_Error z_CliConnect(z_Cli *cli, int64_t i) {
 }
 
 z_Error z_CliCall(z_Cli *cli, z_Req *req, z_Resp *resp) {
-  z_Buffer key;
+  z_ConstBuffer key;
   z_Error ret = z_RecordKey(req->Record, &key);
   if (ret != z_OK) {
     return ret;

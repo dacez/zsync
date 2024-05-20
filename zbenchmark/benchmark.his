@@ -1,4 +1,8 @@
-======== 2024/05/17 14:05:57 ========
-z_BenchmarkInsert: 7435 ms key_count 1048576
-z_BenchmarkFind: 11244 ms key_count 1048576
+======== 2024/05/17 14:44:38 ========
+z_BenchmarkInsert: 6776 ms key_count 1048576
+z_BenchmarkFind: 10594 ms key_count 1048576
+
+======== 2024/05/20 13:15:05 ========
+z_BenchmarkInsert: 6687 ms key_count 1048576
+z_BenchmarkFind: 10711 ms key_count 1048576
 

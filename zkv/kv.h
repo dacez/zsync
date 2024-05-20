@@ -28,7 +28,7 @@ z_Error z_binLogAfterWrite(void *attr, z_Record *r, int64_t offset) {
   z_Error ret = z_OK;
   switch (r->OP) {
   case z_ROP_INSERT: {
-    z_Buffer k;
+    z_ConstBuffer k;
     ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
@@ -36,7 +36,7 @@ z_Error z_binLogAfterWrite(void *attr, z_Record *r, int64_t offset) {
     return z_MapInsert(m, k, offset);
   }
   case z_ROP_DELETE: {
-    z_Buffer k;
+    z_ConstBuffer k;
     ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
@@ -44,12 +44,12 @@ z_Error z_binLogAfterWrite(void *attr, z_Record *r, int64_t offset) {
     return z_MapDelete(m, k);
   }
   case z_ROP_UPDATE: {
-    z_Buffer k;
+    z_ConstBuffer k;
     ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
     }
-    z_Buffer src_v;
+    z_ConstBuffer src_v;
     ret = z_RecordSrcValue(r, &src_v);
     if (ret != z_OK) {
       return ret;
@@ -57,7 +57,7 @@ z_Error z_binLogAfterWrite(void *attr, z_Record *r, int64_t offset) {
     return z_MapUpdate(m, k, offset, src_v);
   }
   case z_ROP_FORCE_UPDATE: {
-    z_Buffer k;
+    z_ConstBuffer k;
     ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
@@ -65,7 +65,7 @@ z_Error z_binLogAfterWrite(void *attr, z_Record *r, int64_t offset) {
     return z_MapForceUpdate(m, k, offset);
   }
   case z_ROP_FORCE_UPSERT: {
-    z_Buffer k;
+    z_ConstBuffer k;
     ret = z_RecordKey(r, &k);
     if (ret != z_OK) {
       return ret;
@@ -79,10 +79,10 @@ z_Error z_binLogAfterWrite(void *attr, z_Record *r, int64_t offset) {
   return z_OK;
 }
 
-bool z_mapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset) {
-  if (attr == nullptr || z_BufferIsEmpty(&key) && z_BufferIsEmpty(&value)) {
+bool z_mapIsEqual(void *attr, z_ConstBuffer key, z_ConstBuffer value, int64_t offset) {
+  if (attr == nullptr || z_ConstBufferIsEmpty(&key) && z_ConstBufferIsEmpty(&value)) {
     z_error(
-        "attr == nullptr || z_BufferIsEmpty(&key) && z_BufferIsEmpty(&value)");
+        "attr == nullptr || z_ConstBufferIsEmpty(&key) && z_ConstBufferIsEmpty(&value)");
     return false;
   }
 
@@ -104,7 +104,7 @@ bool z_mapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset) {
     return false;
   }
 
-  z_Buffer k;
+  z_ConstBuffer k;
   ret = z_RecordKey(fr.Record, &k);
   if (ret != z_OK) {
     z_RecordFree(fr.Record);
@@ -112,7 +112,7 @@ bool z_mapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset) {
     return false;
   }
 
-  z_Buffer v;
+  z_ConstBuffer v;
   ret = z_RecordValue(fr.Record, &v);
   if (ret != z_OK) {
     z_RecordFree(fr.Record);
@@ -122,14 +122,14 @@ bool z_mapIsEqual(void *attr, z_Buffer key, z_Buffer value, int64_t offset) {
 
   bool isEqual = false;
 
-  if (z_BufferIsEmpty(&key) == false && z_BufferIsEmpty(&value) == true) {
-    isEqual = z_BufferIsEqual(k, key);
-  } else if (z_BufferIsEmpty(&key) == true &&
-             z_BufferIsEmpty(&value) == false) {
-    isEqual = z_BufferIsEqual(v, value);
-  } else if (z_BufferIsEmpty(&key) == false &&
-             z_BufferIsEmpty(&value) == false) {
-    isEqual = z_BufferIsEqual(k, key) && z_BufferIsEqual(v, value);
+  if (z_ConstBufferIsEmpty(&key) == false && z_ConstBufferIsEmpty(&value) == true) {
+    isEqual = z_BufferIsEqual(&k, &key);
+  } else if (z_ConstBufferIsEmpty(&key) == true &&
+             z_ConstBufferIsEmpty(&value) == false) {
+    isEqual = z_BufferIsEqual(&v, &value);
+  } else if (z_ConstBufferIsEmpty(&key) == false &&
+             z_ConstBufferIsEmpty(&value) == false) {
+    isEqual = z_BufferIsEqual(&k, &key) && z_BufferIsEqual(&v, &value);
   }
 
   z_RecordFree(fr.Record);
@@ -276,7 +276,7 @@ z_Error z_KVFromRecord(z_KV *kv, z_Record *r) {
   return z_OK;
 }
 
-z_Error z_KVInsert(z_KV *kv, z_Buffer k, z_Buffer v) {
+z_Error z_KVInsert(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
   z_assert(v.Len != 0, v.Data != nullptr);
 
@@ -291,7 +291,7 @@ z_Error z_KVInsert(z_KV *kv, z_Buffer k, z_Buffer v) {
   return ret;
 }
 
-z_Error z_KVForceUpdate(z_KV *kv, z_Buffer k, z_Buffer v) {
+z_Error z_KVForceUpdate(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
   z_assert(v.Len != 0, v.Data != nullptr);
 
@@ -306,7 +306,7 @@ z_Error z_KVForceUpdate(z_KV *kv, z_Buffer k, z_Buffer v) {
   return ret;
 }
 
-z_Error z_KVForceUpsert(z_KV *kv, z_Buffer k, z_Buffer v) {
+z_Error z_KVForceUpsert(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
   z_assert(v.Len != 0, v.Data != nullptr);
 
@@ -321,7 +321,7 @@ z_Error z_KVForceUpsert(z_KV *kv, z_Buffer k, z_Buffer v) {
   return ret;
 }
 
-z_Error z_KVUpdate(z_KV *kv, z_Buffer k, z_Buffer v, z_Buffer src_v) {
+z_Error z_KVUpdate(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v, z_ConstBuffer src_v) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
   z_assert(v.Len != 0, v.Data != nullptr);
   z_assert(src_v.Len != 0, src_v.Data != nullptr);
@@ -337,7 +337,7 @@ z_Error z_KVUpdate(z_KV *kv, z_Buffer k, z_Buffer v, z_Buffer src_v) {
   return ret;
 }
 
-z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
+z_Error z_KVFind(z_KV *kv, z_ConstBuffer k, z_Buffer *v) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
   z_assert(v != nullptr);
 
@@ -366,7 +366,7 @@ z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
     return ret;
   }
 
-  z_Buffer vv;
+  z_ConstBuffer vv;
   ret = z_RecordValue(fr.Record, &vv);
   if (ret != z_OK) {
     z_error("z_RecordValue %d", ret);
@@ -375,17 +375,17 @@ z_Error z_KVFind(z_KV *kv, z_Buffer k, z_Buffer *v) {
     return ret;
   }
 
-  ret = z_BufferResetByBuffer(v, vv);
+  ret = z_BufferInitByConstBuffer(v, &vv);
 
   z_RecordFree(fr.Record);
   z_ReaderDestroy(&rd);
   return ret;
 }
 
-z_Error z_KVDelete(z_KV *kv, z_Buffer k) {
+z_Error z_KVDelete(z_KV *kv, z_ConstBuffer k) {
   z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
 
-  z_Buffer v = {};
+  z_ConstBuffer v = {};
   z_Record *r = z_RecordNewByKV(z_ROP_DELETE, k, v);
   if (r == nullptr) {
     return z_ERR_NOSPACE;

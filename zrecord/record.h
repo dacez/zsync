@@ -54,7 +54,7 @@ int64_t z_UpdateRecordLen(z_UpdateRecord *r) {
   return ((z_UpdateRecord *)r)->Len + sizeof(z_UpdateRecord);
 }
 
-z_Error z_UpdateRecordKey(z_UpdateRecord *r, z_Buffer *key) {
+z_Error z_UpdateRecordKey(z_UpdateRecord *r, z_ConstBuffer *key) {
   z_assert(r != nullptr, r->Len != 0, key != nullptr);
   z_UpdateRecordKVV *kvv =
       (z_UpdateRecordKVV *)((int8_t *)r + sizeof(z_UpdateRecord));
@@ -65,7 +65,7 @@ z_Error z_UpdateRecordKey(z_UpdateRecord *r, z_Buffer *key) {
   return z_OK;
 }
 
-z_Error z_UpdateRecordValue(z_UpdateRecord *r, z_Buffer *value) {
+z_Error z_UpdateRecordValue(z_UpdateRecord *r, z_ConstBuffer *value) {
   z_assert(r != nullptr, r->Len != 0, value != nullptr);
   z_UpdateRecordKVV *kvv =
       (z_UpdateRecordKVV *)((int8_t *)r + sizeof(z_UpdateRecord));
@@ -75,7 +75,7 @@ z_Error z_UpdateRecordValue(z_UpdateRecord *r, z_Buffer *value) {
   return z_OK;
 }
 
-z_Error z_UpdateRecordSrcValue(z_UpdateRecord *r, z_Buffer *value) {
+z_Error z_UpdateRecordSrcValue(z_UpdateRecord *r, z_ConstBuffer *value) {
   z_assert(r != nullptr, r->Len != 0, value != nullptr);
   z_UpdateRecordKVV *kvv =
       (z_UpdateRecordKVV *)((int8_t *)r + sizeof(z_UpdateRecord));
@@ -97,7 +97,7 @@ int64_t z_RecordLen(z_Record *r) {
   return r->KeyLen + r->ValLen + sizeof(z_Record);
 }
 
-z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
+z_Error z_RecordKey(z_Record *r, z_ConstBuffer *key) {
   z_assert(r != nullptr, key != nullptr);
   if (z_IsUpdateRecord(r)) {
     return z_UpdateRecordKey((z_UpdateRecord *)r, key);
@@ -110,7 +110,7 @@ z_Error z_RecordKey(z_Record *r, z_Buffer *key) {
   return z_OK;
 }
 
-z_Error z_RecordValue(z_Record *r, z_Buffer *val) {
+z_Error z_RecordValue(z_Record *r, z_ConstBuffer *val) {
   z_assert(r != nullptr, val != nullptr);
   if (z_IsUpdateRecord(r)) {
     return z_UpdateRecordValue((z_UpdateRecord *)r, val);
@@ -121,7 +121,7 @@ z_Error z_RecordValue(z_Record *r, z_Buffer *val) {
   return z_OK;
 }
 
-z_Error z_RecordSrcValue(z_Record *r, z_Buffer *src_val) {
+z_Error z_RecordSrcValue(z_Record *r, z_ConstBuffer *src_val) {
   z_assert(r != nullptr, r->OP == z_ROP_UPDATE);
   return z_UpdateRecordSrcValue((z_UpdateRecord *)r, src_val);
 }
@@ -170,7 +170,7 @@ z_Record *z_RecordNewByLen(int64_t len) {
   return r;
 }
 
-z_Record *z_RecordNewByKV(uint8_t op, z_Buffer key, z_Buffer val) {
+z_Record *z_RecordNewByKV(uint8_t op, z_ConstBuffer key, z_ConstBuffer val) {
   z_Record record = {.OP = op, .KeyLen = key.Len, .ValLen = val.Len};
   int64_t len = z_RecordLen(&record);
   z_Record *ret_record = z_RecordNewByLen(len);
@@ -190,8 +190,8 @@ z_Record *z_RecordNewByKV(uint8_t op, z_Buffer key, z_Buffer val) {
   return ret_record;
 }
 
-z_Record *z_RecordNewByKVV(uint8_t op, z_Buffer key, z_Buffer val,
-                           z_Buffer src_val) {
+z_Record *z_RecordNewByKVV(uint8_t op, z_ConstBuffer key, z_ConstBuffer val,
+                           z_ConstBuffer src_val) {
   z_assert(op == z_ROP_UPDATE);
   z_UpdateRecord record = {.OP = op,
                            .Len = key.Len + val.Len + src_val.Len +
@@ -234,8 +234,8 @@ void z_RecordFree(z_Record *r) {
   z_free(r);
 }
 
-void z_RecordPrint(z_Record *r) {
-  z_Buffer k, v;
+void z_RecordDebugString(z_Record *r) {
+  z_ConstBuffer k, v;
   z_RecordKey(r, &k);
   z_RecordValue(r, &v);
   char ks[32];

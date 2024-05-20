@@ -12,25 +12,25 @@
 
 z_Error z_KVHandle(void *attr, z_Record *req, z_Record **resp) {
   z_KV *kv = (z_KV *)attr;
-  z_RecordPrint(req);
   if (req->OP != z_ROP_FIND) {
     return z_KVFromRecord(kv, req);
   }
 
-  z_Buffer key = {};
+  z_ConstBuffer key = {};
   z_Error ret = z_RecordKey(req, &key);
   if (ret != z_OK) {
     return ret;
   }
 
-  z_Buffer val = {};
+  z_unique(z_Buffer) val = {};
   ret = z_KVFind(kv, key, &val);
   if (ret != z_OK) {
     return ret;
   }
 
-  z_Buffer empty = {};
-  *resp = z_RecordNewByKV(req->OP, empty, val);
+  z_ConstBuffer empty = {};
+  z_ConstBuffer v = {.Data = val.Data, .Len = val.Len};
+  *resp = z_RecordNewByKV(req->OP, empty, v);
   return z_OK;
 }
 

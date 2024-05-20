@@ -116,7 +116,6 @@ FILE *z_LogFile() {
   }
 
 z_Error z_LogInit(char *path, int64_t log_level) {
-
   if (path == nullptr || log_level > 3) {
     z_panic("path == nullptr || log_level(%lld) > 3", log_level);
   }

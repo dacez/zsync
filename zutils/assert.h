@@ -3,6 +3,7 @@
 
 #include <assert.h>
 
+#include "zutils/log.h"
 #include "zutils/macro.h"
 
 #define z_force_true1(a0)                                                      \
