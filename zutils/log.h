@@ -59,7 +59,7 @@ FILE *z_LogFile() {
     char log_str[z_LOG_LEN] = {};                                              \
     char tail_str[z_LOG_TAIL_LEN] = {};                                        \
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
-    snprintf(log_str, sizeof(log_str), "%s %s (%lld) [warning] %s:%d:%s %s\n", \
+    snprintf(log_str, sizeof(log_str), "%s%s (%lld) [warning] %s:%d:%s\n %s", \
              z_color_yellow, time_str, z_ThreadID(), __FILE__, __LINE__,       \
              tail_str, z_color_end);                                           \
     fprintf(z_LogFile(), "%s", log_str);                                       \
@@ -74,11 +74,11 @@ FILE *z_LogFile() {
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
     if (errno != 0) {                                                          \
       snprintf(log_str, sizeof(log_str),                                       \
-               "%s %s (%lld) [error] %s:%d:%s lastsyserror: %s %s\n",          \
+               "%s%s (%lld) [error] %s:%d:%s lastsyserror: %s\n %s",          \
                z_color_pink, time_str, z_ThreadID(), __FILE__, __LINE__,       \
                tail_str, strerror(errno), z_color_end);                        \
     } else {                                                                   \
-      snprintf(log_str, sizeof(log_str), "%s %s (%lld) [error] %s:%d:%s %s\n", \
+      snprintf(log_str, sizeof(log_str), "%s%s (%lld) [error] %s:%d:%s\n %s", \
                z_color_pink, time_str, z_ThreadID(), __FILE__, __LINE__,       \
                tail_str, z_color_end);                                         \
     }                                                                          \

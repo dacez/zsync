@@ -4,6 +4,6 @@
 #include <stdlib.h> // IWYU pragma: export
 
 #define z_malloc(s) malloc(s);
-#define z_free(ptr) free(ptr);
+#define z_free(ptr) {free(ptr);ptr=nullptr;}
 
 #endif

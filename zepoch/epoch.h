@@ -22,32 +22,32 @@ typedef struct {
 typedef struct {
   atomic_int_fast64_t CurrentEpoch;
   atomic_int_fast64_t *LocalEpochs;
+  int64_t LocalEpochsLen;
   z_EpochAction *Actions;
   int64_t ActionsLen;
-  z_Threads *Ts;
 } z_Epoch;
 
 void z_EpochDestroy(z_Epoch *e) {
   if (e->LocalEpochs != nullptr) {
     z_free(e->LocalEpochs);
-    e->LocalEpochs = nullptr;
+    e->LocalEpochsLen = 0;
   }
 
   if (e->Actions != nullptr) {
     z_free(e->Actions);
-    e->Actions = nullptr;
+    e->ActionsLen = 0;
   }
   return;
 }
 
-z_Error z_EpochInit(z_Epoch *e, int64_t action_len, z_Threads *ts) {
+z_Error z_EpochInit(z_Epoch *e, int64_t local_epochs_len, int64_t actions_len) {
   z_assert(e != nullptr);
 
-  e->ActionsLen = action_len;
-  e->Ts = ts;
+  e->LocalEpochsLen = local_epochs_len;
+  e->ActionsLen = actions_len;
   atomic_store(&e->CurrentEpoch, 0);
 
-  e->LocalEpochs = z_malloc(sizeof(atomic_int_fast64_t) * e->Ts->Len);
+  e->LocalEpochs = z_malloc(sizeof(atomic_int_fast64_t) * e->LocalEpochsLen);
   if (e->LocalEpochs == nullptr) {
     z_error("e->LocalEpochs == nullptr");
     return z_ERR_NOSPACE;
@@ -57,11 +57,10 @@ z_Error z_EpochInit(z_Epoch *e, int64_t action_len, z_Threads *ts) {
   if (e->Actions == nullptr) {
     z_error("e->Actions == nullptr");
     z_free(e->LocalEpochs);
-    e->LocalEpochs = nullptr;
     return z_ERR_NOSPACE;
   }
 
-  for (int64_t i = 0; i < e->Ts->Len; ++i) {
+  for (int64_t i = 0; i < e->LocalEpochsLen; ++i) {
     atomic_store(&e->LocalEpochs[i], z_INVALID_EPOCH);
   }
 
@@ -77,11 +76,13 @@ z_Error z_EpochInit(z_Epoch *e, int64_t action_len, z_Threads *ts) {
 
 void z_EpochProtect(z_Epoch *e) {
   z_assert(e != nullptr);
+  z_assert(z_ThreadID() != z_INVALID_THREAD_ID);
   atomic_store(&e->LocalEpochs[z_ThreadID()], atomic_load(&e->CurrentEpoch));
 }
 
 void z_EpochUnProtect(z_Epoch *e) {
   z_assert(e != nullptr);
+  z_assert(z_ThreadID() != z_INVALID_THREAD_ID);
   atomic_store(&e->LocalEpochs[z_ThreadID()], z_INVALID_EPOCH);
 }
 
@@ -89,9 +90,9 @@ int64_t z_EpochSafe(z_Epoch *e) {
   z_assert(e != nullptr);
 
   int64_t se = INT64_MAX;
-  for (int64_t i = 0; i < e->Ts->Len; ++i) {
+  for (int64_t i = 0; i < e->LocalEpochsLen; ++i) {
     int64_t le = atomic_load(&e->LocalEpochs[i]);
-    if (le != -1 && le < se) {
+    if (le != z_INVALID_EPOCH && le < se) {
       se = le;
     }
   }
@@ -111,7 +112,7 @@ void z_EpochRunActions(z_Epoch *e) {
       z_EpochFunc *Func = e->Actions[i].Func;
       z_Error ret = Func(Attr, Addr);
       if (ret != z_OK) {
-        z_error("action fail %d", ret);
+        z_error("action run failed %d", ret);
         continue;
       }
       atomic_store(&e->Actions[i].Epoch, z_INVALID_EPOCH);
@@ -123,10 +124,7 @@ z_Error z_EpohBump(z_Epoch *e, z_EpochAction action) {
   z_assert(e != nullptr, action.Func != nullptr);
 
   int64_t current_epoch = atomic_fetch_add(&e->CurrentEpoch, 1);
-  atomic_store(&action.Epoch, current_epoch);
-
   z_EpochRunActions(e);
-
   for (int64_t i = 0; i < e->ActionsLen; ++i) {
     int64_t action_epoch = atomic_load(&e->Actions[i].Epoch);
     if (action_epoch == z_INVALID_EPOCH) {

@@ -3,6 +3,7 @@
 #include "znet/svr_kv.h"
 #include "zutils/buffer.h"
 #include "zutils/log.h"
+#include "zutils/threads.h"
 #include "zutils/time.h"
 #include <pthread.h>
 #include <stdint.h>
@@ -15,17 +16,16 @@
 1. 插入 100 万个 Key
 2. 随机读 100 万个 Key
 */
-void *z_BenchmarkSvrRun(void *) {
-  char *bp = "./bin/binlog.log";
-  remove(bp);
-  z_SvrKV(bp, 8);
+void *z_BenchmarkSvrRun(void *arg) {
+  z_SvrKV* svr_kv = (z_SvrKV*)arg;
+  z_SvrKVRun(svr_kv);
   return nullptr;
 }
 
 typedef struct {
   int64_t Start;
   int64_t End;
-  pthread_t Tid;
+  z_Thread Tid;
 } z_BenchmarkArgs;
 
 z_Error z_BenchmarkInsertOne(z_Cli *cli, int64_t i) {
@@ -138,6 +138,9 @@ int main() {
   int64_t thread_count = 8;
   int64_t key_count = 1024 * 1024;
 
+  const char *bp = "./bin/binlog.log";
+  remove(bp);
+
   z_LogInit("", 2);
   z_defer(z_LogDestroy);
 
@@ -146,23 +149,29 @@ int main() {
     fclose(bmFile);
   });
 
-  pthread_t tid;
-  pthread_create(&tid, nullptr, z_BenchmarkSvrRun, nullptr);
+  z_unique(z_SvrKV) svr_kv;
+  z_Error ret = z_SvrKVInit(&svr_kv, bp, 1024*1024*1024, 1024, "127.0.0.1", 123456, 16);
+  if (ret != z_OK) {
+    z_panic("z_SvrKVInit %d", ret);
+  }
+
+  z_Thread t;
+  z_ThreadCreate(&t, z_BenchmarkSvrRun, &svr_kv);
   sleep(1);
 
   z_BenchmarkArgs *args = z_malloc(sizeof(z_BenchmarkArgs) * thread_count);
-  z_defer(^{
-    z_free(args);
-  });
+  z_defer(^(z_BenchmarkArgs **ptr){
+    z_free(*ptr);
+  }, &args);
 
   int64_t start = z_NowMS();
   for (int64_t i = 0; i < thread_count; ++i) {
     args[i].Start = i * key_count / thread_count;
     args[i].End = args[i].Start + key_count / thread_count;
-    pthread_create(&args[i].Tid, nullptr, z_BenchmarkInsert, &args[i]);
+    z_ThreadCreate(&args[i].Tid, z_BenchmarkInsert, &args[i]);
   }
   for (int64_t i = 0; i < thread_count; ++i) {
-    pthread_join(args[i].Tid, nullptr);
+    z_ThreadJion(args[i].Tid);
   }
   char date[32] = {};
   z_LocalDate(date);
@@ -176,10 +185,10 @@ int main() {
   for (int64_t i = 0; i < thread_count; ++i) {
     args[i].Start = i * key_count / thread_count;
     args[i].End = args[i].Start + key_count / thread_count;
-    pthread_create(&args[i].Tid, nullptr, z_BenchmarkFind, &args[i]);
+    z_ThreadCreate(&args[i].Tid, z_BenchmarkFind, &args[i]);
   }
   for (int64_t i = 0; i < thread_count; ++i) {
-    pthread_join(args[i].Tid, nullptr);
+    z_ThreadJion(args[i].Tid);
   }
   fprintf(bmFile, "z_BenchmarkFind: %lld ms key_count %lld\n\n",
           z_NowMS() - start, key_count);

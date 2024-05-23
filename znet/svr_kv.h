@@ -1,14 +1,13 @@
-
 #ifndef z_SVR_KV_H
 #define z_SVR_KV_H
-#include "zepoch/epoch.h"
+#include <stdint.h>
+
 #include "zerror/error.h"
 #include "zkv/kv.h"
 #include "znet/svr.h"
 #include "zrecord/record.h"
 #include "zutils/buffer.h"
 #include "zutils/log.h"
-#include <stdint.h>
 
 z_Error z_KVHandle(void *attr, z_Record *req, z_Record **resp) {
   z_KV *kv = (z_KV *)attr;
@@ -34,31 +33,38 @@ z_Error z_KVHandle(void *attr, z_Record *req, z_Record **resp) {
   return z_OK;
 }
 
-void z_SvrKV(char *binlog_path, int64_t thread_count) {
+typedef struct {
+  z_KV KV;
+  z_Svr Svr;
+} z_SvrKV;
 
-  z_unique(z_Threads) ts;
-  z_Error ret = z_ThreadsInit(&ts, thread_count);
+z_Error z_SvrKVInit(z_SvrKV *svr, const char *binlog_path, int64_t binlog_max_size, int64_t buckets_len, const char *ip, int64_t port, int64_t thread_count) {
+  z_Error ret = z_KVInit(&svr->KV, binlog_path, binlog_max_size, buckets_len);
   if (ret != z_OK) {
-    z_panic("z_ThreadsInit");
+    z_error("z_KVInit %d", ret);
+    return ret;
   }
 
-  z_unique(z_Epoch) epoch;
-  ret = z_EpochInit(&epoch, 32, &ts);
+  ret = z_SvrInit(&svr->Svr, ip, port, thread_count, &svr->KV, z_KVHandle);
   if (ret != z_OK) {
-    z_panic("z_EpochInit");
+    z_error("z_SvrInit %d", ret);
+    return ret;
   }
 
-  z_unique(z_KV) kv;
-  ret = z_KVInit(&kv, binlog_path, 1024 * 1024 * 1024, 1024);
-  if (ret != z_OK) {
-    z_panic("z_KVInit");
-  }
+  return ret;
+}
 
-  z_Svr svr;
-  ret = z_SvrRun(&svr, "127.0.0.1", 12301, &epoch, &kv, z_KVHandle);
+z_Error z_SvrKVRun(z_SvrKV *svr) {
+  z_Error ret = z_SvrRun(&svr->Svr);
   if (ret != z_OK) {
-    z_panic("z_SvrRun");
+    z_error("z_SvrRun failed %d", ret);
+    return ret;
   }
-  return;
+  return z_OK;
+}
+
+void z_SvrKVDestroy(z_SvrKV *svr) {
+  z_KVDestroy(&svr->KV);
+  z_SvrDestroy(&svr->Svr);
 }
 #endif

@@ -50,7 +50,6 @@ void z_CacheDestory(z_Cache *cache) {
   atomic_store(&cache->End, 0);
   atomic_store(&cache->Unused, 0);
   z_free(cache->Data);
-  cache->Data = nullptr;
   cache->Size = 0;
 }
 

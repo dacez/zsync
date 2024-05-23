@@ -29,7 +29,6 @@ void z_ListDestroy(z_List *l) {
   }
 
   z_free(l->Records);
-  l->Records = nullptr;
   l->Len = 0;
   l->Pos = 0;
 }
@@ -396,7 +395,6 @@ void z_MapDestroy(z_Map *m) {
   }
 
   z_free(m->Buckets);
-  m->Buckets = nullptr;
   m->BucketsLen = 0;
   return;
 }

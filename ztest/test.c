@@ -13,10 +13,11 @@
 #include "znet/kv_svr_cli_test.h"
 
 int main() {
-  z_LogInit("./bin/log.txt", 2);
+  z_LogInit("", 2);
   z_defer(z_LogDestroy);
 
   z_TEST_START();
+  
   z_MacroTest();
   z_DeferTest();
   z_TimeTest();

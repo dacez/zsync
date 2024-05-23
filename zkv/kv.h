@@ -212,7 +212,7 @@ void z_KVDestroy(z_KV *kv) {
   return;
 }
 
-z_Error z_KVInit(z_KV *kv, char *path, int64_t binlog_file_max_size,
+z_Error z_KVInit(z_KV *kv, const char *path, int64_t binlog_file_max_size,
                  int64_t buckets_len) {
   if (kv == nullptr || strlen(path) >= z_MAX_PATH_LENGTH ||
       binlog_file_max_size == 0 || buckets_len == 0) {

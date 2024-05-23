@@ -86,10 +86,7 @@ z_Error z_UpdateRecordSrcValue(z_UpdateRecord *r, z_ConstBuffer *value) {
 }
 
 int64_t z_RecordLen(z_Record *r) {
-  if (r == nullptr) {
-    z_error("r == nullptr");
-    return 0;
-  }
+  z_assert(r != nullptr);
 
   if (z_IsUpdateRecord(r) == true) {
     return z_UpdateRecordLen((z_UpdateRecord *)r);
@@ -127,10 +124,7 @@ z_Error z_RecordSrcValue(z_Record *r, z_ConstBuffer *src_val) {
 }
 
 z_Error z_RecordCheck(z_Record *r) {
-  if (r == nullptr) {
-    z_error("r == nullptr");
-    return z_ERR_INVALID_DATA;
-  }
+  z_assert(r != nullptr);
 
   uint8_t sum = r->Sum;
   r->Sum = 0;
@@ -145,10 +139,7 @@ z_Error z_RecordCheck(z_Record *r) {
 }
 
 void z_RecordSum(z_Record *r) {
-  if (r == nullptr) {
-    z_error("r == nullptr");
-    return;
-  }
+  z_assert(r != nullptr);
 
   r->Sum = 0;
   uint8_t s = z_Checksum((int8_t *)r, z_RecordLen(r));
@@ -192,7 +183,10 @@ z_Record *z_RecordNewByKV(uint8_t op, z_ConstBuffer key, z_ConstBuffer val) {
 
 z_Record *z_RecordNewByKVV(uint8_t op, z_ConstBuffer key, z_ConstBuffer val,
                            z_ConstBuffer src_val) {
-  z_assert(op == z_ROP_UPDATE);
+  if (op != z_ROP_UPDATE) {
+    z_error("op != z_ROP_UPDATE");
+    return nullptr;
+  }
   z_UpdateRecord record = {.OP = op,
                            .Len = key.Len + val.Len + src_val.Len +
                                   sizeof(z_UpdateRecordKVV)};
@@ -238,8 +232,8 @@ void z_RecordDebugString(z_Record *r) {
   z_ConstBuffer k, v;
   z_RecordKey(r, &k);
   z_RecordValue(r, &v);
-  char ks[32];
-  char vs[32];
+  char ks[32] = {};
+  char vs[32] = {};
 
   z_BufferStr(k, ks);
   z_BufferStr(v, vs);

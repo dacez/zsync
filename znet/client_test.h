@@ -1,3 +1,5 @@
+#include <stdint.h>
+#include <string.h>
 
 #include "zerror/error.h"
 #include "znet/client.h"
@@ -6,8 +8,6 @@
 #include "ztest/test.h"
 #include "zutils/buffer.h"
 #include "zutils/defer.h"
-#include <stdint.h>
-#include <string.h>
 
 z_Error z_InsertTest(z_Cli *cli, int64_t i) {
   z_unique(z_Req) req = {};
@@ -25,7 +25,7 @@ z_Error z_InsertTest(z_Cli *cli, int64_t i) {
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
-  
+
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
@@ -168,7 +168,7 @@ z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
 typedef struct {
   int64_t Start;
   int64_t End;
-  pthread_t Tid;
+  z_Thread Tid;
 } z_ClientTestArgs;
 
 void z_ClientTest(z_ClientTestArgs *args) {
