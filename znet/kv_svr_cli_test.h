@@ -1,4 +1,3 @@
-#include <pthread.h>
 #include <stdint.h>
 #include <unistd.h>
 
@@ -11,8 +10,9 @@
 #include "zutils/threads.h"
 
 void *SvrRun(void *arg) {
-  z_SvrKV* svr_kv = (z_SvrKV*)arg;
-  z_SvrKVRun(svr_kv);
+  z_SvrKV *svr_kv = (z_SvrKV*)arg;
+  z_Error ret = z_SvrKVRun(svr_kv);
+  z_ASSERT_TRUE(ret == z_OK);
   return nullptr;
 }
 
@@ -52,4 +52,8 @@ void z_KVSvrCliTest() {
   for (int64_t i = 0; i < thread_count; ++i) {
     z_ThreadJion(args[i].Tid);
   }
+
+  z_SvrKVStop(&svr_kv);
+
+  z_ThreadJion(t);
 }

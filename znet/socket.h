@@ -34,12 +34,39 @@ typedef struct {
   int64_t FD;
 } z_Socket;
 
+z_Error z_SocketSetTimeout(z_Socket *s, int64_t sec) {
+  struct timeval timeout;
+  timeout.tv_sec = 1;
+  timeout.tv_usec = 0;
+
+  int ret = setsockopt(s->FD, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,
+                       sizeof(timeout));
+  if (ret != 0) {
+    z_error("setsockopt(SO_RCVTIMEO) failed %d", ret);
+    return z_ERR_NET;
+  }
+
+  ret = setsockopt(s->FD, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout,
+                       sizeof(timeout));
+  if (ret != 0) {
+    z_error("setsockopt(SO_SNDTIMEO) failed %d", ret);
+    return z_ERR_NET;
+  }
+  return z_OK;
+}
+
 z_Error z_SocketInit(z_Socket *s) {
   s->FD = socket(AF_INET, SOCK_STREAM, 0);
   if (s->FD < 0) {
     z_error("socket failed %lld", s->FD);
     s->FD = z_INVALID_SOCKET;
     return z_ERR_NET;
+  }
+
+  z_Error ret = z_SocketSetTimeout(s, 1);
+  if (ret != 0) {
+    z_error("z_SocketSetTimeout %d", ret);
+    return ret;
   }
   return z_OK;
 }
@@ -86,9 +113,7 @@ z_Error z_SocketSvrInit(z_Socket *s, const char *ip, uint16_t port) {
 }
 
 z_Error z_SocketAccept(const z_Socket *svr, z_Socket *cli) {
-  z_SockAddr cli_addr;
-  socklen_t cli_addr_len = sizeof(cli_addr);
-  int64_t cli_socket = accept(svr->FD, &cli_addr, &cli_addr_len);
+  int64_t cli_socket = accept(svr->FD, nullptr, nullptr);
   if (cli_socket < 0) {
     z_error("cli_socket < 0 %lld", cli_socket);
     return z_ERR_NET;

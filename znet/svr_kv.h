@@ -63,6 +63,10 @@ z_Error z_SvrKVRun(z_SvrKV *svr) {
   return z_OK;
 }
 
+void z_SvrKVStop(z_SvrKV *svr) {
+  z_SvrStop(&svr->Svr);
+}
+
 void z_SvrKVDestroy(z_SvrKV *svr) {
   z_KVDestroy(&svr->KV);
   z_SvrDestroy(&svr->Svr);

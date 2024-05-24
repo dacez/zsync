@@ -74,11 +74,11 @@ FILE *z_LogFile() {
     snprintf(tail_str, sizeof(tail_str), __VA_ARGS__);                         \
     if (errno != 0) {                                                          \
       snprintf(log_str, sizeof(log_str),                                       \
-               "%s%s (%lld) [error] %s:%d:%s lastsyserror: %s\n %s",          \
+               "%s%s (%lld) [error] %s:%d:%s lastsyserror: %s\n%s",          \
                z_color_pink, time_str, z_ThreadID(), __FILE__, __LINE__,       \
                tail_str, strerror(errno), z_color_end);                        \
     } else {                                                                   \
-      snprintf(log_str, sizeof(log_str), "%s%s (%lld) [error] %s:%d:%s\n %s", \
+      snprintf(log_str, sizeof(log_str), "%s%s (%lld) [error] %s:%d:%s\n%s", \
                z_color_pink, time_str, z_ThreadID(), __FILE__, __LINE__,       \
                tail_str, z_color_end);                                         \
     }                                                                          \

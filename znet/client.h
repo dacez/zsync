@@ -105,8 +105,8 @@ void z_CliDestroy(z_Cli *cli) {
   }
 
   for (int64_t i = 0;i < cli->ConnsLen; ++i) {
-    z_LockDestroy(&cli->Conns[i].Lock);
     z_CliConnectClose(cli, i);
+    z_LockDestroy(&cli->Conns[i].Lock);
   }
 
   z_free(cli->Conns);

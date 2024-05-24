@@ -97,7 +97,7 @@ z_Error z_BenchmarkFindOne(z_Cli *cli, int64_t i, int64_t ii) {
 void *z_BenchmarkInsert(void *as) {
   z_BenchmarkArgs *args = (z_BenchmarkArgs *)as;
   z_unique(z_Cli) cli = {};
-  z_Error ret = z_CliInit(&cli, "127.0.0.1", 12301, 16);
+  z_Error ret = z_CliInit(&cli, "127.0.0.1", 12301, 1);
   if (ret != z_OK) {
     z_panic("z_CliInit");
   }
@@ -115,7 +115,7 @@ void *z_BenchmarkInsert(void *as) {
 void *z_BenchmarkFind(void *as) {
   z_BenchmarkArgs *args = (z_BenchmarkArgs *)as;
   z_unique(z_Cli) cli = {};
-  z_Error ret = z_CliInit(&cli, "127.0.0.1", 12301, 16);
+  z_Error ret = z_CliInit(&cli, "127.0.0.1", 12301, 1);
   if (ret != z_OK) {
     z_panic("z_CliInit");
   }
@@ -150,7 +150,7 @@ int main() {
   });
 
   z_unique(z_SvrKV) svr_kv;
-  z_Error ret = z_SvrKVInit(&svr_kv, bp, 1024*1024*1024, 1024, "127.0.0.1", 123456, 16);
+  z_Error ret = z_SvrKVInit(&svr_kv, bp, 1024*1024*1024, 1024, "127.0.0.1", 12301, 16);
   if (ret != z_OK) {
     z_panic("z_SvrKVInit %d", ret);
   }
@@ -195,5 +195,8 @@ int main() {
   printf("z_BenchmarkFind: %lld ms key_count %lld\n", z_NowMS() - start,
          key_count);
 
+  z_SvrKVStop(&svr_kv);
+
+  z_ThreadJion(t);
   return 0;
 }

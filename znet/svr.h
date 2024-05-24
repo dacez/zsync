@@ -31,7 +31,6 @@ typedef struct {
   void *Attr;
   z_Handle *Handle;
   int64_t ThreadCount;
-  z_Threads TS;
   z_ThreadIDs TIDs;
   z_Epoch Epoch;
   int64_t *KQs;
@@ -84,7 +83,7 @@ void *z_IOProcess(void *ptr) {
   while (1) {
     int8_t status = atomic_load(&svr->Status);
     if (status != z_SVR_STATUS_RUNNING) {
-      z_info("svr stop");
+      z_info("z_IOProcess stop");
       break;
     }
 
@@ -150,9 +149,12 @@ void z_SvrKQueueDestroy(int64_t *kqs) {
 
 void z_SvrDestroy(z_Svr *svr) {
   z_assert(svr != nullptr);
-  atomic_store(&svr->Status, z_SVR_STATUS_STOP);
 
-  z_ThreadsDestroy(&svr->TS);
+  int8_t status = atomic_load(&svr->Status);
+  if (status != z_SVR_STATUS_STOP) {
+    z_panic("status invalid %d", status);
+  }
+
   z_ThreadIDsDestroy(&svr->TIDs);
   z_EpochDestroy(&svr->Epoch);
   z_SvrKQueueDestroy(svr->KQs);
@@ -218,12 +220,6 @@ z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port,
       z_error("z_SvrKQueueInit %d", ret);
       break;
     }
-
-    ret = z_ThreadsInit(&svr->TS, svr->ThreadCount, z_IOProcess, svr);
-    if (ret != z_OK) {
-      z_error("z_ThreadsInit %d", ret);
-      break;
-    }
   } while (0);
 
   if (ret != z_OK) {
@@ -237,23 +233,63 @@ z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port,
 z_Error z_SvrRun(z_Svr *svr) {
   atomic_store(&svr->Status, z_SVR_STATUS_RUNNING);
 
+  z_unique(z_Threads) ts;
+  z_Error ret = z_ThreadsInit(&ts, svr->ThreadCount, z_IOProcess, svr);
+  if (ret != z_OK) {
+    z_error("z_ThreadsInit %d", ret);
+    return ret;
+  }
+
+  int64_t kq = kqueue();
+  ret = z_SvrEventAdd(kq, svr->Socket.FD);
+  if (ret != z_OK) {
+    z_error("z_SvrEventAdd %d", ret);
+    return ret;
+  }
+
   while (1) {
-    z_Socket sock_cli = {};
-    z_Error ret = z_SocketAccept(&svr->Socket, &sock_cli);
-    if (ret != z_OK) {
-      z_error("z_SocketAccept %d", ret);
+    int8_t status = atomic_load(&svr->Status);
+    if (status != z_SVR_STATUS_RUNNING) {
+      z_info("z_SvrRun stop");
+      break;
+    }
+
+    struct kevent events[z_KQUEUE_BACKLOG] = {};
+    struct timespec ts = {.tv_sec = 1, .tv_nsec = 0};
+    int64_t ev_count = kevent(kq, NULL, 0, events, z_KQUEUE_BACKLOG, &ts);
+    if (ev_count < 0) {
+      z_error("kevent failed");
+      break;
+    }
+
+    if (ev_count == 0) {
+      z_debug("timeout");
       continue;
     }
 
-    int64_t kq = svr->KQs[sock_cli.FD % svr->ThreadCount];
-    ret = z_SvrEventAdd(kq, sock_cli.FD);
-    if (ret != z_OK) {
-      z_error("z_SvrEventAdd %d", ret);
-      continue;
+    for (int64_t i = 0; i < z_KQUEUE_BACKLOG; ++i) {
+      z_Socket sock_cli = {};
+      z_Error ret = z_SocketAccept(&svr->Socket, &sock_cli);
+      if (ret != z_OK) {
+        z_error("z_SocketAccept %d", ret);
+        continue;
+      }
+
+      ret = z_SvrEventAdd(svr->KQs[sock_cli.FD % svr->ThreadCount], sock_cli.FD);
+      if (ret != z_OK) {
+        z_error("z_SvrEventAdd %d", ret);
+        continue;
+      }
     }
   }
 
+  close(kq);
+
   return z_OK;
+}
+
+void z_SvrStop(z_Svr *svr) {
+  atomic_store(&svr->Status, z_SVR_STATUS_STOP);
 }
 
 #endif
