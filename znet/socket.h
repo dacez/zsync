@@ -1,17 +1,18 @@
 #ifndef z_SOCKET_H
 #define z_SOCKET_H
 
+#include <sys/event.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <unistd.h> // close()
+
+#include <stdint.h>
+#include <string.h>
+
 #include "zerror/error.h"
 #include "zutils/assert.h"
 #include "zutils/log.h"
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/event.h>
-#include <sys/socket.h>
-#include <unistd.h> // close()
 
 #define z_IP_MAX_LEN 64
 #define z_LISTEN_BACKLOG 1024
