@@ -1,6 +1,7 @@
 #ifndef z_CHANNEL_MACOS_H
 #define z_CHANNEL_MACOS_H
 #include <stdint.h>
+
 #include <sys/event.h>
 #include <unistd.h>
 
