@@ -4,9 +4,6 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/errno.h>
-#include <sys/event.h>
-#include <unistd.h>
 
 #include "zepoch/epoch.h"
 #include "zerror/error.h"

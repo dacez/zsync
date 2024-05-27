@@ -14,7 +14,6 @@
 #include <unistd.h> // close()
 
 #define z_IP_MAX_LEN 64
-#define z_KQUEUE_BACKLOG 8
 #define z_LISTEN_BACKLOG 1024
 
 #define z_INVALID_SOCKET -1
