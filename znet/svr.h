@@ -4,8 +4,8 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/errno.h>
 #include <sys/event.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "zepoch/epoch.h"
@@ -14,9 +14,9 @@
 #include "znet/socket.h"
 #include "zrecord/record.h"
 #include "zutils/assert.h"
+#include "zutils/channel.h"
 #include "zutils/defer.h"
 #include "zutils/log.h"
-#include "zutils/mem.h"
 #include "zutils/threads.h"
 
 typedef z_Error z_Handle(void *attr, z_Record *record, z_Record **result);
@@ -30,42 +30,18 @@ typedef struct {
   uint16_t Port;
   void *Attr;
   z_Handle *Handle;
-  int64_t ThreadCount;
+  z_Socket Socket;
+  z_Channel AcceptCh;
+  int64_t WorkerCount;
   z_ThreadIDs TIDs;
   z_Epoch Epoch;
-  int64_t *KQs;
-  z_Socket Socket;
+  z_Channels WorkerChs;
   atomic_int_fast8_t Status;
 } z_Svr;
 
-z_Error z_SvrEventAdd(int64_t kq, int64_t cli_socket) {
-  struct kevent ev;
-  EV_SET(&ev, cli_socket, EVFILT_READ, EV_ADD, 0, 0, NULL);
-  if (kevent(kq, &ev, 1, NULL, 0, NULL) < 0) {
-    z_error("registering client socket for read events failed");
-    return z_ERR_NET;
-  }
-  return z_OK;
-}
-
-z_Error z_SvrEventDel(int64_t kq, int64_t cli_socket) {
-  struct kevent ev;
-  EV_SET(&ev, cli_socket, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-  if (kevent(kq, &ev, 1, NULL, 0, NULL) < 0) {
-    z_error("delete client socket for read events failed");
-    return z_ERR_NET;
-  }
-  return z_OK;
-}
-
-void z_SvrConnectClose(int64_t kq, int64_t cli_socket) {
-  if (z_SvrEventDel(kq, cli_socket) != z_OK) {
-    z_error("z_SvrEventDel");
-  }
-
-  z_debug("close connection %lld", cli_socket);
-  close(cli_socket);
-  return;
+void z_ConnectClose(z_Channel *ch, z_Socket *socket) {
+  z_ChannelUnsubscribeSocket(ch, socket);
+  z_SocketDestroy(socket);
 }
 
 void *z_IOProcess(void *ptr) {
@@ -77,7 +53,12 @@ void *z_IOProcess(void *ptr) {
   z_ThreadIDInit(&svr->TIDs);
   z_defer(z_ThreadIDDestroy, &svr->TIDs);
 
-  int64_t kq = svr->KQs[z_ThreadID()];
+  z_Channel *ch = nullptr;
+  z_Error ret = z_ChannelsGet(&svr->WorkerChs, z_ThreadID(), &ch);
+  if (ret != z_OK) {
+    z_error("z_ChannelsGet %d", ret);
+    return nullptr;
+  }
   z_debug("IOThread Start %lld", z_ThreadID());
 
   while (1) {
@@ -87,12 +68,12 @@ void *z_IOProcess(void *ptr) {
       break;
     }
 
-    struct kevent events[z_KQUEUE_BACKLOG] = {};
-    struct timespec ts = {.tv_sec = 1, .tv_nsec = 0};
-    int64_t ev_count = kevent(kq, NULL, 0, events, z_KQUEUE_BACKLOG, &ts);
-    if (ev_count < 0) {
-      z_error("kevent failed");
-      break;
+    z_Event events[z_EVENT_LEN] = {};
+    int64_t ev_count = 0;
+    ret = z_ChannelWait(ch, events, z_EVENT_LEN, &ev_count, 1000);
+    if (ret != z_OK) {
+      z_error("z_ChannelWait %d", ret);
+      continue;
     }
 
     if (ev_count == 0) {
@@ -101,21 +82,21 @@ void *z_IOProcess(void *ptr) {
     }
 
     for (int64_t i = 0; i < ev_count; ++i) {
-      int64_t cli_socket = events[i].ident;
+      z_Socket cli_socket = {.FD= events[i].FD};
 
-      if (events[i].flags & EV_EOF) {
-        z_debug("client close connection");
-        z_SvrConnectClose(kq, cli_socket);
+      if (z_EventIsEnd(&events[i])) {
+        z_debug("z_EventIsEnd");
+        z_ConnectClose(ch, &cli_socket);
         continue;
       }
 
       z_Req req = {};
       z_defer(z_ReqDestroy, &req);
 
-      z_Error ret = z_ReqInitFromNet(cli_socket, &req);
+      z_Error ret = z_ReqInitFromNet(cli_socket.FD, &req);
       if (ret != z_OK) {
         z_error("z_ReqInitFromNet %d", ret);
-        z_SvrConnectClose(kq, cli_socket);
+        z_ConnectClose(ch, &cli_socket);
         continue;
       }
 
@@ -129,22 +110,16 @@ void *z_IOProcess(void *ptr) {
       resp.Ret.Code = ret;
       resp.Ret.DataLen = resp.Record != nullptr ? z_RecordLen(resp.Record) : 0;
 
-      ret = z_RespToNet(cli_socket, &resp);
+      ret = z_RespToNet(cli_socket.FD, &resp);
       if (ret != z_OK) {
         z_error("z_RespToNet %d", ret);
-        z_SvrConnectClose(kq, cli_socket);
+        z_ConnectClose(ch, &cli_socket);
         continue;
       }
     }
   }
 
   return nullptr;
-}
-
-void z_SvrKQueueDestroy(int64_t *kqs) {
-  if (kqs != nullptr) {
-    z_free(kqs);
-  }
 }
 
 void z_SvrDestroy(z_Svr *svr) {
@@ -155,36 +130,16 @@ void z_SvrDestroy(z_Svr *svr) {
     z_panic("status invalid %d", status);
   }
 
-  z_ThreadIDsDestroy(&svr->TIDs);
+  z_ChannelsDestroy(&svr->WorkerChs);
   z_EpochDestroy(&svr->Epoch);
-  z_SvrKQueueDestroy(svr->KQs);
-  svr->KQs = nullptr;
+  z_ThreadIDsDestroy(&svr->TIDs);
+  z_ChannelDestroy(&svr->AcceptCh);
   z_SocketDestroy(&svr->Socket);
 }
 
-z_Error z_SvrKQueueInit(z_Svr *svr) {
-  z_assert(svr != nullptr);
-
-  int64_t kqs_len = svr->ThreadCount;
-  svr->KQs = z_malloc(kqs_len * sizeof(int64_t));
-  if (svr->KQs == nullptr) {
-    z_error("svr->KQs == nullptr");
-    return z_ERR_NOSPACE;
-  }
-
-  for (int64_t i = 0; i < kqs_len; ++i) {
-    svr->KQs[i] = kqueue();
-    if (svr->KQs[i] < 0) {
-      z_error("kqueue failed %lld", svr->KQs[i]);
-      return z_ERR_NET;
-    }
-  }
-  return z_OK;
-}
-
 z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port,
-                  int64_t thread_count, void *attr, z_Handle *handle) {
-  z_assert(svr != nullptr, ip != nullptr, port != 0, thread_count != 0,
+                  int64_t worker_count, void *attr, z_Handle *handle) {
+  z_assert(svr != nullptr, ip != nullptr, port != 0, worker_count != 0,
            attr != nullptr, handle != nullptr);
 
   memset(svr->IP, 0, z_IP_MAX_LEN);
@@ -192,32 +147,38 @@ z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port,
   svr->Port = port;
   svr->Attr = attr;
   svr->Handle = handle;
-  svr->ThreadCount = thread_count;
-  atomic_store(&svr->Status, z_SVR_STATUS_RUNNING);
+  svr->WorkerCount = worker_count;
+  atomic_store(&svr->Status, z_SVR_STATUS_STOP);
 
   z_Error ret = z_OK;
   do {
-    z_ThreadIDsInit(&svr->TIDs, thread_count);
-    if (ret != z_OK) {
-      z_error("z_ThreadIDsInit %d", ret);
-      break;
-    }
-
-    ret = z_EpochInit(&svr->Epoch, thread_count, 1024);
-    if (ret != z_OK) {
-      z_error("z_EpochInit %d", ret);
-      break;
-    }
-
     ret = z_SocketSvrInit(&svr->Socket, svr->IP, svr->Port);
     if (ret != z_OK) {
       z_error("z_SocketSvrInit %d", ret);
       break;
     }
 
-    ret = z_SvrKQueueInit(svr);
+    ret = z_ChannelInit(&svr->AcceptCh);
     if (ret != z_OK) {
-      z_error("z_SvrKQueueInit %d", ret);
+      z_error("z_ChannelInit %d", ret);
+      break;
+    }
+
+    z_ThreadIDsInit(&svr->TIDs, worker_count);
+    if (ret != z_OK) {
+      z_error("z_ThreadIDsInit %d", ret);
+      break;
+    }
+
+    ret = z_EpochInit(&svr->Epoch, worker_count, 1024);
+    if (ret != z_OK) {
+      z_error("z_EpochInit %d", ret);
+      break;
+    }
+
+    ret = z_ChannelsInit(&svr->WorkerChs, worker_count);
+    if (ret != z_OK) {
+      z_error("z_ChannelsInit %d", ret);
       break;
     }
   } while (0);
@@ -234,16 +195,21 @@ z_Error z_SvrRun(z_Svr *svr) {
   atomic_store(&svr->Status, z_SVR_STATUS_RUNNING);
 
   z_unique(z_Threads) ts;
-  z_Error ret = z_ThreadsInit(&ts, svr->ThreadCount, z_IOProcess, svr);
+  z_Error ret = z_ThreadsInit(&ts, svr->WorkerCount, z_IOProcess, svr);
   if (ret != z_OK) {
     z_error("z_ThreadsInit %d", ret);
     return ret;
   }
 
-  int64_t kq = kqueue();
-  ret = z_SvrEventAdd(kq, svr->Socket.FD);
+  ret = z_ChannelInit(&svr->AcceptCh);
   if (ret != z_OK) {
-    z_error("z_SvrEventAdd %d", ret);
+    z_error("z_ChannelInit %d", ret);
+    return ret;
+  }
+
+  ret = z_ChannelSubscribeSocket(&svr->AcceptCh, &svr->Socket);
+  if (ret != z_OK) {
+    z_error("z_ChannelSubscribeSocket %d", ret);
     return ret;
   }
 
@@ -254,12 +220,12 @@ z_Error z_SvrRun(z_Svr *svr) {
       break;
     }
 
-    struct kevent events[z_KQUEUE_BACKLOG] = {};
-    struct timespec ts = {.tv_sec = 1, .tv_nsec = 0};
-    int64_t ev_count = kevent(kq, NULL, 0, events, z_KQUEUE_BACKLOG, &ts);
-    if (ev_count < 0) {
-      z_error("kevent failed");
-      break;
+    z_Event events[z_EVENT_LEN] = {};
+    int64_t ev_count = 0;
+    ret = z_ChannelWait(&svr->AcceptCh, events, z_EVENT_LEN, &ev_count, 1000);
+    if (ret != z_OK) {
+      z_error("z_ChannelWait %d", ret);
+      continue;
     }
 
     if (ev_count == 0) {
@@ -267,7 +233,7 @@ z_Error z_SvrRun(z_Svr *svr) {
       continue;
     }
 
-    for (int64_t i = 0; i < z_KQUEUE_BACKLOG; ++i) {
+    for (int64_t i = 0; i < ev_count; ++i) {
       z_Socket sock_cli = {};
       z_Error ret = z_SocketAccept(&svr->Socket, &sock_cli);
       if (ret != z_OK) {
@@ -275,21 +241,27 @@ z_Error z_SvrRun(z_Svr *svr) {
         continue;
       }
 
-      ret = z_SvrEventAdd(svr->KQs[sock_cli.FD % svr->ThreadCount], sock_cli.FD);
+      z_Channel *ch_cli = nullptr;
+      ret = z_ChannelsGet(&svr->WorkerChs, sock_cli.FD % svr->WorkerCount,
+                          &ch_cli);
       if (ret != z_OK) {
-        z_error("z_SvrEventAdd %d", ret);
+        z_error("z_ChannelsGet %d", ret);
+        continue;
+      }
+
+      ret = z_ChannelSubscribeSocket(ch_cli, &sock_cli);
+      if (ret != z_OK) {
+        z_error("z_ChannelSubscribeSocket %d", ret);
         continue;
       }
     }
   }
 
-  close(kq);
-
+  z_ChannelUnsubscribeSocket(&svr->AcceptCh, &svr->Socket);
+  z_ChannelDestroy(&svr->AcceptCh);
   return z_OK;
 }
 
-void z_SvrStop(z_Svr *svr) {
-  atomic_store(&svr->Status, z_SVR_STATUS_STOP);
-}
+void z_SvrStop(z_Svr *svr) { atomic_store(&svr->Status, z_SVR_STATUS_STOP); }
 
 #endif
