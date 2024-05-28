@@ -1,8 +1,9 @@
 #ifndef z_FILE_RECORD
 #define z_FILE_RECORD
 
-#include "zrecord/record.h"
 #include <stdint.h>
+
+#include "zrecord/record.h"
 
 typedef struct {
   int64_t Seq;

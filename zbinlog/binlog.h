@@ -1,11 +1,12 @@
 #ifndef z_BINLOG_H
 #define z_BINLOG_H
 
+#include <stdint.h>
+
 #include "zbinlog/file.h"
 #include "zbinlog/file_record.h"
 #include "zerror/error.h"
 #include "zutils/lock.h"
-#include <stdint.h>
 
 typedef z_Error z_BinLogAfterWrite(void *, z_Record *, int64_t);
 

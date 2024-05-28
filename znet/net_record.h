@@ -1,12 +1,14 @@
 #ifndef z_NET_RECORD
 #define z_NET_RECORD
+
+#include <stdint.h>
+#include <sys/socket.h>
+
 #include "zerror/error.h"
 #include "zrecord/record.h"
 #include "zutils/assert.h"
 #include "zutils/log.h"
 #include "zutils/mem.h"
-#include <stdint.h>
-#include <sys/socket.h>
 
 typedef struct {
   z_Record *Record;
@@ -14,8 +16,8 @@ typedef struct {
 
 typedef struct {
   uint64_t Code : 8;
-  uint64_t reserve:24;
-  uint32_t DataLen:32;
+  uint64_t reserve : 24;
+  uint32_t DataLen : 32;
 } z_Ret;
 static_assert(sizeof(z_Ret) == 8);
 

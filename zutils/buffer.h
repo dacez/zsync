@@ -1,11 +1,12 @@
 #ifndef z_BUFFER_H
 #define z_BUFFER_H
 
+#include <stdint.h>
+#include <string.h>
+
 #include "zerror/error.h"
 #include "zutils/assert.h"
 #include "zutils/mem.h"
-#include <stdint.h>
-#include <string.h>
 
 typedef struct {
   const void *Data;

@@ -1,6 +1,8 @@
 #ifndef z_KV_H
 #define z_KV_H
 
+#include <stdint.h>
+
 #include "zbinlog/binlog.h"
 #include "zbinlog/file.h"
 #include "zbinlog/file_record.h"
@@ -9,7 +11,6 @@
 #include "zrecord/record.h"
 #include "zutils/assert.h"
 #include "zutils/defer.h"
-#include <stdint.h>
 
 #define z_MAX_PATH_LENGTH 1024
 

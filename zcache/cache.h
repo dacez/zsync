@@ -1,11 +1,12 @@
 #ifndef z_CACHE_H
 #define z_CACHE_H
 
+#include <stdatomic.h>
+
 #include "zerror/error.h"
 #include "zutils/log.h"
 #include "zutils/mem.h"
 
-#include <stdatomic.h>
 
 typedef struct {
   int64_t Len;

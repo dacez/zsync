@@ -1,9 +1,10 @@
 #ifndef z_TEST_H
 #define z_TEST_H
-#include "zutils/time.h" // IWYU pragma: export
-#include <stdatomic.h>
 #include <stdio.h> // IWYU pragma: export
 #include <stdlib.h>
+
+#include "zutils/time.h" // IWYU pragma: export
+#include <stdatomic.h>
 
 static atomic_int_fast64_t z_test_succ_count;
 static atomic_int_fast64_t z_test_fail_count;

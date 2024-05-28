@@ -1,14 +1,15 @@
 #ifndef z_SOCKET_H
 #define z_SOCKET_H
 
+#include <stdint.h>
+#include <string.h>
+
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h> // close()
 
-#include <stdint.h>
-#include <string.h>
 
 #include "zerror/error.h"
 #include "zutils/assert.h"

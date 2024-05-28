@@ -1,13 +1,14 @@
 #ifndef z_RECORD_H
 #define z_RECORD_H
+#include <stdint.h>
+#include <string.h>
+
 #include "zerror/error.h"
 #include "zutils/assert.h"
 #include "zutils/buffer.h"
 #include "zutils/hash.h"
 #include "zutils/log.h"
 #include "zutils/mem.h"
-#include <stdint.h>
-#include <string.h>
 
 typedef enum : uint8_t {
   z_ROP_INSERT = 1,
