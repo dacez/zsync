@@ -87,8 +87,7 @@ void *z_IOProcess(void *ptr) {
         continue;
       }
 
-      z_Req req = {};
-      z_defer(z_ReqDestroy, &req);
+      z_unique(z_Req) req = {};
 
       z_Error ret = z_ReqInitFromNet(cli_socket.FD, &req);
       if (ret != z_OK) {
@@ -97,8 +96,7 @@ void *z_IOProcess(void *ptr) {
         continue;
       }
 
-      z_Resp resp = {};
-      z_defer(z_RespDestroy, &resp);
+      z_unique(z_Resp) resp = {};
       ret = svr->Handle(svr->Attr, req.Record, &resp.Record);
       if (ret != z_OK) {
         z_debug("handle error %d", ret);
