@@ -4,12 +4,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <sys/event.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/event.h>
+#include <sys/socket.h>
 #include <unistd.h> // close()
-
 
 #include "zerror/error.h"
 #include "zutils/assert.h"
@@ -48,7 +47,7 @@ z_Error z_SocketSetTimeout(z_Socket *s, int64_t sec) {
   }
 
   ret = setsockopt(s->FD, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout,
-                       sizeof(timeout));
+                   sizeof(timeout));
   if (ret != 0) {
     z_error("setsockopt(SO_SNDTIMEO) failed %d", ret);
     return z_ERR_NET;
@@ -129,5 +128,27 @@ void z_SocketDestroy(z_Socket *s) {
     close(s->FD);
     s->FD = z_INVALID_SOCKET;
   }
+}
+
+z_Error z_SocketRead(const z_Socket *s, int8_t *data, int64_t size) {
+  z_assert(s != nullptr, data != nullptr, size != 0);
+
+  int64_t bytes = recv(s->FD, data, size, 0);
+  if (bytes <= 0 || bytes != size) {
+    z_error("recv failed bytes:%lld socket:%lld size %lld", bytes, s->FD, size);
+    return z_ERR_NET;
+  }
+  return z_OK;
+}
+
+z_Error z_SocketWrite(const z_Socket *s, int8_t *data, int64_t size) {
+  z_assert(s != nullptr, data != nullptr, size != 0);
+
+  int64_t bytes = send(s->FD, data, size, 0);
+  if (bytes <= 0 || bytes != size) {
+    z_error("send failed bytes:%lld socket:%lld size %lld", bytes, s->FD, size);
+    return z_ERR_NET;
+  }
+  return z_OK;
 }
 #endif

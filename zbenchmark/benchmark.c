@@ -1,6 +1,8 @@
 #include "zerror/error.h"
 #include "znet/client.h"
+#include "znet/net_record.h"
 #include "znet/svr_kv.h"
+#include "zrecord/record.h"
 #include "zutils/buffer.h"
 #include "zutils/log.h"
 #include "zutils/threads.h"
@@ -36,21 +38,23 @@ z_Error z_BenchmarkInsertOne(z_Cli *cli, int64_t i) {
   char val[32] = {};
   sprintf(key, "key%lld", i);
   sprintf(val, "value%lld", i);
-  z_ConstBuffer k = {.Data = (const int8_t *)key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = (const int8_t *)val, .Len = strlen(val)};
+  z_ConstBuffer k = {.Data = (const int8_t *)key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = (const int8_t *)val, .Size = strlen(val)};
 
   req.Record = z_RecordNewByKV(z_ROP_INSERT, k, v);
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
+  req.Header.Type = z_RT_KV;
+  req.Header.Size = z_RecordSize(req.Record);
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (resp.Ret.Code != z_OK) {
-    return resp.Ret.Code;
+  if (resp.Header.Code != z_OK) {
+    return resp.Header.Code;
   }
 
   return z_OK;
@@ -64,21 +68,23 @@ z_Error z_BenchmarkFindOne(z_Cli *cli, int64_t i, int64_t ii) {
   char val[32] = {};
   sprintf(key, "key%lld", i);
   sprintf(val, "value%lld", ii);
-  z_ConstBuffer k = {.Data = (const int8_t *)key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = (const int8_t *)val, .Len = strlen(val)};
+  z_ConstBuffer k = {.Data = (const int8_t *)key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = (const int8_t *)val, .Size = strlen(val)};
 
   req.Record = z_RecordNewByKV(z_ROP_FIND, k, z_ConstBufferEmpty());
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
+  req.Header.Type = z_RT_KV;
+  req.Header.Size = z_RecordSize(req.Record);
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (resp.Ret.Code != z_OK) {
-    return resp.Ret.Code;
+  if (resp.Header.Code != z_OK) {
+    return resp.Header.Code;
   }
 
   z_ConstBuffer resp_val;

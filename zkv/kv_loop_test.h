@@ -11,8 +11,8 @@ bool z_Insert(z_KV *kv, int64_t i) {
   sprintf(key, "key%lld", i);
   sprintf(value, "value%lld", i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = value, .Len = strlen(value)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = value, .Size = strlen(value)};
   z_Error ret = z_KVInsert(kv, k, v);
   return ret == z_OK;
 }
@@ -23,8 +23,8 @@ bool z_ForceUpdate(z_KV *kv, int64_t i, int64_t iv) {
   sprintf(key, "key%lld", i);
   sprintf(value, "value%lld", iv);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = value, .Len = strlen(value)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = value, .Size = strlen(value)};
 
   z_Error ret = z_KVForceUpdate(kv, k, v);
 
@@ -39,9 +39,9 @@ bool z_Update(z_KV *kv, int64_t i, int64_t vi, int64_t src_i) {
   sprintf(value, "value%lld", vi);
   sprintf(src_value, "value%lld", src_i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = value, .Len = strlen(value)};
-  z_ConstBuffer src_v = {.Data = src_value, .Len = strlen(src_value)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = value, .Size = strlen(value)};
+  z_ConstBuffer src_v = {.Data = src_value, .Size = strlen(src_value)};
 
   z_Error ret = z_KVUpdate(kv, k, v, src_v);
 
@@ -56,9 +56,9 @@ bool z_UpdateConflict(z_KV *kv, int64_t i, int64_t vi, int64_t src_i) {
   sprintf(value, "value%lld", vi);
   sprintf(src_value, "value%lld", src_i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = value, .Len = strlen(value)};
-  z_ConstBuffer src_v = {.Data = src_value, .Len = strlen(src_value)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = value, .Size = strlen(value)};
+  z_ConstBuffer src_v = {.Data = src_value, .Size = strlen(src_value)};
 
   z_Error ret = z_KVUpdate(kv, k, v, src_v);
 
@@ -71,8 +71,8 @@ bool z_Find(z_KV *kv, int64_t i, int64_t iv) {
   sprintf(key, "key%lld", i);
   sprintf(value, "value%lld", iv);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = value, .Len = strlen(value)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = value, .Size = strlen(value)};
 
   z_unique(z_Buffer) buffer = {};
   z_Error ret = z_KVFind(kv, k, &buffer);
@@ -88,7 +88,7 @@ bool z_Delete(z_KV *kv, int64_t i) {
   char key[32] = {};
   sprintf(key, "key%lld", i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
 
   z_Error ret = z_KVDelete(kv, k);
 
@@ -99,7 +99,7 @@ bool z_FindNotFound(z_KV *kv, int64_t i) {
   char key[32] = {};
   sprintf(key, "key%lld", i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
   z_unique(z_Buffer) v = {};
 
   z_Error ret = z_KVFind(kv, k, &v);
@@ -111,7 +111,7 @@ bool z_DeleteNotFound(z_KV *kv, int64_t i) {
   char key[32] = {};
   sprintf(key, "key%lld", i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
 
   z_Error ret = z_KVDelete(kv, k);
 

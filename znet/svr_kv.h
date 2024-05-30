@@ -6,10 +6,18 @@
 #include "zkv/kv.h"
 #include "znet/svr.h"
 #include "zrecord/record.h"
+#include "zutils/assert.h"
 #include "zutils/buffer.h"
 #include "zutils/log.h"
 
 z_Error z_KVHandle(void *attr, z_Record *req, z_Record **resp) {
+  z_assert(attr != nullptr, resp != nullptr);
+
+  if (req == nullptr) {
+    z_error("req == nullptr");
+    return z_ERR_INVALID_DATA;
+  }
+
   z_KV *kv = (z_KV *)attr;
   if (req->OP != z_ROP_FIND) {
     return z_KVFromRecord(kv, req);
@@ -18,19 +26,25 @@ z_Error z_KVHandle(void *attr, z_Record *req, z_Record **resp) {
   z_ConstBuffer key = {};
   z_Error ret = z_RecordKey(req, &key);
   if (ret != z_OK) {
+    z_error("z_RecordKey failed %d", ret);
     return ret;
   }
 
   z_unique(z_Buffer) val = {};
   ret = z_KVFind(kv, key, &val);
   if (ret != z_OK) {
+    z_debug("z_KVFind failed %d", ret);
     return ret;
   }
 
   z_ConstBuffer empty = {};
-  z_ConstBuffer v = {.Data = val.Data, .Len = val.Len};
+  z_ConstBuffer v = {.Data = val.Data, .Size = val.Size};
   *resp = z_RecordNewByKV(req->OP, empty, v);
-  return z_OK;
+  if (*resp == nullptr) {
+    z_error("*resp == nullptr");
+    return z_ERR_NOSPACE;
+  }
+ return z_OK;
 }
 
 typedef struct {

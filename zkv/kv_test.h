@@ -11,8 +11,8 @@ void z_KVTest() {
   z_Error ret = z_KVInit(&kv, binlog_path, 1024 * 1024 * 1024, 1);
   z_ASSERT_TRUE(ret == z_OK);
 
-  z_ConstBuffer k = {.Data = "key", .Len = 3};
-  z_ConstBuffer v = {.Data = "value", .Len = 5};
+  z_ConstBuffer k = {.Data = "key", .Size = 3};
+  z_ConstBuffer v = {.Data = "value", .Size = 5};
 
   ret = z_KVInsert(&kv, k, v);
   z_ASSERT_TRUE(ret == z_OK);
@@ -26,9 +26,9 @@ void z_KVTest() {
   z_ASSERT_TRUE(z_BufferIsEqual(&vv, &v) == true);
 
   v.Data = "value1";
-  v.Len = strlen(v.Data);
+  v.Size = strlen(v.Data);
 
-  z_ConstBuffer src_v = {.Data = "value", .Len = 5};
+  z_ConstBuffer src_v = {.Data = "value", .Size = 5};
   // current = value
   // vv = value
   ret = z_KVUpdate(&kv, k, v, src_v);

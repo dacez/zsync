@@ -18,21 +18,23 @@ z_Error z_InsertTest(z_Cli *cli, int64_t i) {
   sprintf(key, "key%lld", i);
   sprintf(val, "value%lld", i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = val, .Len = strlen(val)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
 
   req.Record = z_RecordNewByKV(z_ROP_INSERT, k, v);
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
+  req.Header.Size = z_RecordSize(req.Record);
+  req.Header.Type = z_RT_KV;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (resp.Ret.Code != z_OK) {
-    return resp.Ret.Code;
+  if (resp.Header.Code != z_OK) {
+    return resp.Header.Code;
   }
 
   return z_OK;
@@ -45,21 +47,23 @@ z_Error z_DeleteTest(z_Cli *cli, int64_t i) {
   char key[32] = {};
   sprintf(key, "key%lld", i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
   z_ConstBuffer v = {};
 
   req.Record = z_RecordNewByKV(z_ROP_DELETE, k, v);
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
+  req.Header.Size = z_RecordSize(req.Record);
+  req.Header.Type = z_RT_KV;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (resp.Ret.Code != z_OK) {
-    return resp.Ret.Code;
+  if (resp.Header.Code != z_OK) {
+    return resp.Header.Code;
   }
 
   return z_OK;
@@ -74,21 +78,23 @@ z_Error z_BlindUpdateTest(z_Cli *cli, int64_t i, int64_t ii) {
   sprintf(key, "key%lld", i);
   sprintf(val, "value%lld", ii);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = val, .Len = strlen(val)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
 
   req.Record = z_RecordNewByKV(z_ROP_FORCE_UPDATE, k, v);
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
+  req.Header.Size = z_RecordSize(req.Record);
+  req.Header.Type = z_RT_KV;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (resp.Ret.Code != z_OK) {
-    return resp.Ret.Code;
+  if (resp.Header.Code != z_OK) {
+    return resp.Header.Code;
   }
 
   return z_OK;
@@ -105,22 +111,24 @@ z_Error z_UpdateTest(z_Cli *cli, int64_t i, int64_t ii, int64_t src_i) {
   sprintf(val, "value%lld", ii);
   sprintf(src_val, "value%lld", src_i);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = val, .Len = strlen(val)};
-  z_ConstBuffer src_v = {.Data = src_val, .Len = strlen(src_val)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
+  z_ConstBuffer src_v = {.Data = src_val, .Size = strlen(src_val)};
 
   req.Record = z_RecordNewByKVV(z_ROP_UPDATE, k, v, src_v);
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
+  req.Header.Size = z_RecordSize(req.Record);
+  req.Header.Type = z_RT_KV;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (resp.Ret.Code != z_OK) {
-    return resp.Ret.Code;
+  if (resp.Header.Code != z_OK) {
+    return resp.Header.Code;
   }
 
   return z_OK;
@@ -135,21 +143,23 @@ z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
   sprintf(key, "key%lld", i);
   sprintf(val, "value%lld", ii);
 
-  z_ConstBuffer k = {.Data = key, .Len = strlen(key)};
-  z_ConstBuffer v = {.Data = val, .Len = strlen(val)};
+  z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
+  z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
 
   req.Record = z_RecordNewByKV(z_ROP_FIND, k, z_ConstBufferEmpty());
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
+  req.Header.Size = z_RecordSize(req.Record);
+  req.Header.Type = z_RT_KV;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
     return ret;
   }
 
-  if (resp.Ret.Code != z_OK) {
-    return resp.Ret.Code;
+  if (resp.Header.Code != z_OK) {
+    return resp.Header.Code;
   }
 
   z_ConstBuffer resp_val;

@@ -56,7 +56,7 @@ void z_WriterDestroy(z_Writer *wr) {
   wr->MaxSize = 0;
 }
 
-z_Error z_WriterWrite(z_Writer *wr, int8_t *data, int64_t len) {
+z_Error z_WriterWrite(z_Writer *wr, int8_t *data, int64_t size) {
   int64_t offset = {};
   z_Error ret = z_WriterOffset(wr, &offset);
   if (ret != z_OK) {
@@ -64,8 +64,8 @@ z_Error z_WriterWrite(z_Writer *wr, int8_t *data, int64_t len) {
     return z_ERR_FS;
   }
 
-  if (offset + len < wr->MaxSize) {
-    if (fwrite(data, sizeof(int8_t), len, wr->File) != len) {
+  if (offset + size < wr->MaxSize) {
+    if (fwrite(data, sizeof(int8_t), size, wr->File) != size) {
       z_error("fwrite");
       return z_ERR_FS;
     }
@@ -74,7 +74,7 @@ z_Error z_WriterWrite(z_Writer *wr, int8_t *data, int64_t len) {
       z_error("fflush");
     }
   } else {
-    z_error("nospace current:%lld len:%lld max:%lld", offset, len,
+    z_error("nospace current:%lld size:%lld max:%lld", offset, size,
             wr->MaxSize);
     return z_ERR_NOSPACE;
   }
@@ -87,7 +87,7 @@ z_Error z_WriterAppendRecord(z_Writer *wr, z_FileRecord *r) {
     return ret;
   }
 
-  ret = z_WriterWrite(wr, (int8_t *)r->Record, z_RecordLen(r->Record));
+  ret = z_WriterWrite(wr, (int8_t *)r->Record, z_RecordSize(r->Record));
   if (ret != z_OK) {
     return ret;
   }
@@ -124,14 +124,14 @@ void z_ReaderDestroy(z_Reader *rd) {
   }
 }
 
-z_Error z_ReaderRead(z_Reader *rd, int8_t *data, int64_t len) {
-  if (rd == nullptr || data == nullptr || len == 0) {
-    z_error("rd == nullptr || data == nullptr || len == 0");
+z_Error z_ReaderRead(z_Reader *rd, int8_t *data, int64_t size) {
+  if (rd == nullptr || data == nullptr || size == 0) {
+    z_error("rd == nullptr || data == nullptr || size == 0");
     return z_ERR_INVALID_DATA;
   }
 
-  int64_t l = fread(data, sizeof(int8_t), len, rd->File);
-  if (l != len) {
+  int64_t l = fread(data, sizeof(int8_t), size, rd->File);
+  if (l != size) {
     z_error("fread %lld", l);
     return z_ERR_FS;
   }
@@ -158,11 +158,11 @@ z_Error z_ReaderGetRecord(z_Reader *rd, z_FileRecord *r) {
     return ret;
   }
 
-  int64_t len = z_RecordLen(&record);
-  z_Record *ret_record = z_RecordNewByLen(len);
+  int64_t size = z_RecordSize(&record);
+  z_Record *ret_record = z_RecordNewBySize(size);
   *ret_record = record;
   ret =
-      z_ReaderRead(rd, (int8_t *)(ret_record + 1), len - sizeof(z_Record));
+      z_ReaderRead(rd, (int8_t *)(ret_record + 1), size - sizeof(z_Record));
   if (ret != z_OK) {
     z_error("z_ReaderRead");
     z_RecordFree(ret_record);

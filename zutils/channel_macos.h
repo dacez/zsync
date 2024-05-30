@@ -72,6 +72,11 @@ z_Error z_ChannelWait(z_Channel *ch, z_Event *events, int64_t events_len, int64_
     return z_ERR_NET;
   }
 
+  if (*events_count == 0) {
+    z_debug("timeout");
+    return z_ERR_TIMEOUT;
+  }
+
   for (int64_t i = 0; i < *events_count; ++i) {
     events[i].FD = es[i].ident;
     events[i].Flag = es[i].flags;
@@ -83,8 +88,9 @@ z_Error z_ChannelWait(z_Channel *ch, z_Event *events, int64_t events_len, int64_
 void z_ChannelDestroy(z_Channel *ch) {
   z_assert(ch != nullptr);
 
-  if (ch != nullptr) {
+  if (ch != nullptr && ch->CH != z_INVALID_CHANNEL) {
     close(ch->CH);
+    ch->CH = z_INVALID_CHANNEL;
   }
 }
 #endif

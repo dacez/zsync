@@ -9,7 +9,7 @@
 
 
 typedef struct {
-  int64_t Len;
+  int64_t Size;
 } z_CacheRecord;
 
 typedef bool z_CacheBeforeRemove(void *attr, z_CacheRecord *r);
@@ -54,11 +54,11 @@ void z_CacheDestory(z_Cache *cache) {
   cache->Size = 0;
 }
 
-z_Error z_CacheAdd(z_Cache *cache, int8_t *data, int64_t len,
+z_Error z_CacheAdd(z_Cache *cache, int8_t *data, int64_t size,
                    uint64_t *offset) {
-  if (cache == nullptr || data == nullptr || len == 0 || offset == nullptr) {
+  if (cache == nullptr || data == nullptr || size == 0 || offset == nullptr) {
     z_error(
-        "cache == nullptr || data == nullptr || len == 0 || offset == nullptr");
+        "cache == nullptr || data == nullptr || size == 0 || offset == nullptr");
     return z_ERR_INVALID_DATA;
   }
 
@@ -69,16 +69,16 @@ z_Error z_CacheAdd(z_Cache *cache, int8_t *data, int64_t len,
     return z_ERR_INVALID_DATA;
   }
 
-  if (end + len + sizeof(z_CacheRecord) - start > cache->Size) {
-    z_error("no space start %llu end %llu len %lld", start, end, len);
+  if (end + size + sizeof(z_CacheRecord) - start > cache->Size) {
+    z_error("no space start %llu end %llu size %lld", start, end, size);
     return z_ERR_NOSPACE;
   }
 
-  *offset = atomic_fetch_add(&cache->End, len + sizeof(z_CacheRecord));
+  *offset = atomic_fetch_add(&cache->End, size + sizeof(z_CacheRecord));
   z_CacheRecord *cr = (z_CacheRecord *)(cache->Data + *offset % cache->Size);
-  cr->Len = len;
+  cr->Size = size;
 
-  memcpy(cr + 1, data, len);
+  memcpy(cr + 1, data, size);
   return z_OK;
 }
 
@@ -122,7 +122,7 @@ void z_CacheUnused(z_Cache *cache) {
   }
 
   z_CacheRecord *cr = (z_CacheRecord *)(cache->Data + unused % cache->Size);
-  uint64_t des = unused + cr->Len + sizeof(z_CacheRecord);
+  uint64_t des = unused + cr->Size + sizeof(z_CacheRecord);
   bool ret = atomic_compare_exchange_strong(&cache->Unused, &unused, des);
   if (ret == false) {
     z_error("unused %llu", unused);
@@ -161,7 +161,7 @@ void z_CacheRemove(z_Cache *cache, uint64_t unused) {
       break;
     }
 
-    uint64_t des = start + cr->Len + sizeof(z_CacheRecord);
+    uint64_t des = start + cr->Size + sizeof(z_CacheRecord);
     bool atomic_ret =
         atomic_compare_exchange_strong(&cache->Start, &start, des);
     if (atomic_ret == false) {

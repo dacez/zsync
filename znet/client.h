@@ -62,13 +62,14 @@ z_Error z_CliConnect(z_Cli *cli, int64_t i) {
   return z_OK;
 }
 
-z_Error z_CliCall(z_Cli *cli, z_Req *req, z_Resp *resp) {
+z_Error z_CliCall(z_Cli *cli, const z_Req *req, z_Resp *resp) {
   z_ConstBuffer key;
   z_Error ret = z_RecordKey(req->Record, &key);
   if (ret != z_OK) {
+    z_error("z_RecordKey failed %d", ret);
     return ret;
   }
-  uint64_t hash = z_Hash(key.Data, key.Len);
+  uint64_t hash = z_Hash(key.Data, key.Size);
   int64_t i = hash % cli->ConnsLen;
 
   z_LockLock(&cli->Conns[i].Lock);
@@ -76,18 +77,21 @@ z_Error z_CliCall(z_Cli *cli, z_Req *req, z_Resp *resp) {
 
   ret = z_CliConnect(cli, i);
   if (ret != z_OK) {
+    z_error("z_CliConnect failed %d", ret);
     z_CliConnectClose(cli, i);
     return ret;
   }
 
-  ret = z_ReqToNet(cli->Conns[i].Socket.FD, req);
+  ret = z_ReqToSocket(req, &cli->Conns[i].Socket);
   if (ret != z_OK) {
+    z_error("z_ReqToSocket failed %d", ret);
     z_CliConnectClose(cli, i);
     return ret;
   }
 
-  ret = z_RespInitFromNet(cli->Conns[i].Socket.FD, resp);
+  ret = z_RespInitBySocket(resp, &cli->Conns[i].Socket);
   if (ret != z_OK) {
+    z_error("z_RespInitBySocket failed %d", ret);
     z_CliConnectClose(cli, i);
     return ret;
   }
@@ -96,11 +100,7 @@ z_Error z_CliCall(z_Cli *cli, z_Req *req, z_Resp *resp) {
 }
 
 void z_CliDestroy(z_Cli *cli) {
-  if (cli == nullptr) {
-    return;
-  }
-
-  if (cli->Conns == nullptr) {
+  if (cli == nullptr || cli->Conns == nullptr) {
     return;
   }
 

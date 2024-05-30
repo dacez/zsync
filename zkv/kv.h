@@ -278,8 +278,8 @@ z_Error z_KVFromRecord(z_KV *kv, z_Record *r) {
 }
 
 z_Error z_KVInsert(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
-  z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
-  z_assert(v.Len != 0, v.Data != nullptr);
+  z_assert(kv != nullptr, k.Size != 0, k.Data != nullptr);
+  z_assert(v.Size != 0, v.Data != nullptr);
 
   z_Record *r = z_RecordNewByKV(z_ROP_INSERT, k, v);
   if (r == nullptr) {
@@ -293,8 +293,8 @@ z_Error z_KVInsert(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
 }
 
 z_Error z_KVForceUpdate(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
-  z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
-  z_assert(v.Len != 0, v.Data != nullptr);
+  z_assert(kv != nullptr, k.Size != 0, k.Data != nullptr);
+  z_assert(v.Size != 0, v.Data != nullptr);
 
   z_Record *r = z_RecordNewByKV(z_ROP_FORCE_UPDATE, k, v);
   if (r == nullptr) {
@@ -308,8 +308,8 @@ z_Error z_KVForceUpdate(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
 }
 
 z_Error z_KVForceUpsert(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
-  z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
-  z_assert(v.Len != 0, v.Data != nullptr);
+  z_assert(kv != nullptr, k.Size != 0, k.Data != nullptr);
+  z_assert(v.Size != 0, v.Data != nullptr);
 
   z_Record *r = z_RecordNewByKV(z_ROP_FORCE_UPDATE, k, v);
   if (r == nullptr) {
@@ -323,9 +323,9 @@ z_Error z_KVForceUpsert(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v) {
 }
 
 z_Error z_KVUpdate(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v, z_ConstBuffer src_v) {
-  z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
-  z_assert(v.Len != 0, v.Data != nullptr);
-  z_assert(src_v.Len != 0, src_v.Data != nullptr);
+  z_assert(kv != nullptr, k.Size != 0, k.Data != nullptr);
+  z_assert(v.Size != 0, v.Data != nullptr);
+  z_assert(src_v.Size != 0, src_v.Data != nullptr);
 
   z_Record *r = z_RecordNewByKVV(z_ROP_UPDATE, k, v, src_v);
   if (r == nullptr) {
@@ -339,7 +339,7 @@ z_Error z_KVUpdate(z_KV *kv, z_ConstBuffer k, z_ConstBuffer v, z_ConstBuffer src
 }
 
 z_Error z_KVFind(z_KV *kv, z_ConstBuffer k, z_Buffer *v) {
-  z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
+  z_assert(kv != nullptr, k.Size != 0, k.Data != nullptr);
   z_assert(v != nullptr);
 
   int64_t offset = 0;
@@ -384,7 +384,7 @@ z_Error z_KVFind(z_KV *kv, z_ConstBuffer k, z_Buffer *v) {
 }
 
 z_Error z_KVDelete(z_KV *kv, z_ConstBuffer k) {
-  z_assert(kv != nullptr, k.Len != 0, k.Data != nullptr);
+  z_assert(kv != nullptr, k.Size != 0, k.Data != nullptr);
 
   z_ConstBuffer v = {};
   z_Record *r = z_RecordNewByKV(z_ROP_DELETE, k, v);

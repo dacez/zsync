@@ -16,6 +16,7 @@ typedef struct {
 } z_Event;
 bool z_EventIsEnd(z_Event *e);
 
+#define z_INVALID_CHANNEL -1
 typedef struct {
   int64_t CH;
 } z_Channel;
@@ -35,20 +36,20 @@ void z_ChannelUnsubscribeSocket(z_Channel *ch, const z_Socket *s) {
 
 typedef struct {
   z_Channel *Chs;
-  int64_t Len;
+  int64_t ChsLen;
 } z_Channels;
 
-z_Error z_ChannelsInit(z_Channels *chs, int64_t len) {
+z_Error z_ChannelsInit(z_Channels *chs, int64_t chs_len) {
   z_assert(chs != nullptr);
 
-  chs->Len = len;
-  chs->Chs = z_malloc(len * sizeof(z_Channel));
+  chs->ChsLen = chs_len;
+  chs->Chs = z_malloc(chs->ChsLen * sizeof(z_Channel));
   if (chs->Chs == nullptr) {
     z_error("chs->Chs == nullptr");
     return z_ERR_NOSPACE;
   }
 
-  for (int64_t i = 0; i < len; ++i) {
+  for (int64_t i = 0; i < chs->ChsLen; ++i) {
     z_Error ret = z_ChannelInit(&chs->Chs[i]);
     if (ret != z_OK) {
       z_error("z_ChannelInit %d", ret);
@@ -61,8 +62,8 @@ z_Error z_ChannelsInit(z_Channels *chs, int64_t len) {
 z_Error z_ChannelsGet(z_Channels *chs, int64_t i, z_Channel **ch) {
   z_assert(chs != nullptr);
 
-  if (i >= chs->Len) {
-    z_error("i >= chs->Len %lld %lld", i, chs->Len);
+  if (i >= chs->ChsLen) {
+    z_error("i >= chs->ChsLen %lld %lld", i, chs->ChsLen);
     return z_ERR_INVALID_DATA;
   }
 
@@ -77,11 +78,11 @@ void z_ChannelsDestroy(z_Channels *chs) {
     return;
   }
 
-  for (int64_t i = 0; i < chs->Len; ++i) {
+  for (int64_t i = 0; i < chs->ChsLen; ++i) {
     z_ChannelDestroy(&chs->Chs[i]);
   }
 
   z_free(chs->Chs);
-  chs->Len = 0;
+  chs->ChsLen = 0;
 }
 #endif

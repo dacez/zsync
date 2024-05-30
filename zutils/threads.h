@@ -20,19 +20,19 @@ thread_local int64_t z_thread_id = z_INVALID_THREAD_ID;
 
 typedef struct {
   z_Lock *Locks;
-  int64_t Len;
+  int64_t LocksLen;
 } z_ThreadIDs;
 
-z_Error z_ThreadIDsInit(z_ThreadIDs *t, int64_t len) {
+z_Error z_ThreadIDsInit(z_ThreadIDs *t, int64_t thread_count) {
   if (t == nullptr) {
     return z_ERR_INVALID_DATA;
   }
-  t->Len = len;
-  t->Locks = z_malloc(sizeof(z_Lock) * t->Len);
+  t->LocksLen = thread_count;
+  t->Locks = z_malloc(sizeof(z_Lock) * t->LocksLen);
   if (t->Locks == nullptr) {
     return z_ERR_NOSPACE;
   }
-  for (int64_t i = 0; i < t->Len; ++i) {
+  for (int64_t i = 0; i < t->LocksLen; ++i) {
     z_LockInit(&t->Locks[i]);
   }
 
@@ -44,7 +44,7 @@ void z_ThreadIDsDestroy(z_ThreadIDs *t) {
     return;
   }
 
-  for (int64_t i = 0; i < t->Len; ++i) {
+  for (int64_t i = 0; i < t->LocksLen; ++i) {
     z_LockDestroy(&t->Locks[i]);
   }
 
@@ -60,7 +60,7 @@ z_Error z_ThreadIDInit(z_ThreadIDs *t) {
     return z_ERR_INVALID_DATA;
   }
 
-  for (int64_t i = 0; i < t->Len; ++i) {
+  for (int64_t i = 0; i < t->LocksLen; ++i) {
     if (z_LockTryLock(&t->Locks[i])) {
       z_thread_id = i;
       break;
@@ -87,11 +87,11 @@ int64_t z_ThreadID() { return z_thread_id; }
 
 typedef struct {
   z_Thread *Ts;
-  int64_t ThreadCount;
+  int64_t TsLen;
 } z_Threads;
 
 z_Error z_ThreadsInit(z_Threads *ts, int64_t tc, z_ThreadFunc func, void *arg) {
-  ts->ThreadCount = tc;
+  ts->TsLen = tc;
   ts->Ts = z_malloc(sizeof(z_Thread) * tc);
   for (int64_t i = 0; i < tc; ++i) {
     z_ThreadCreate(&ts->Ts[i], func, arg);
@@ -101,7 +101,7 @@ z_Error z_ThreadsInit(z_Threads *ts, int64_t tc, z_ThreadFunc func, void *arg) {
 
 void z_ThreadsDestroy(z_Threads *ts) {
   if (ts->Ts != nullptr) {
-    for (int64_t i = 0; i < ts->ThreadCount; ++i) {
+    for (int64_t i = 0; i < ts->TsLen; ++i) {
       z_ThreadJion(ts->Ts[i]);
     }
     z_free(ts->Ts);

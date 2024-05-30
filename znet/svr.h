@@ -68,18 +68,22 @@ void *z_IOProcess(void *ptr) {
     z_Event events[z_EVENT_LEN] = {};
     int64_t ev_count = 0;
     ret = z_ChannelWait(ch, events, z_EVENT_LEN, &ev_count, 1000);
-    if (ret != z_OK) {
-      z_error("z_ChannelWait %d", ret);
-      continue;
-    }
-
-    if (ev_count == 0) {
+    switch (ret) {
+    case z_ERR_TIMEOUT: {
       z_debug("timeout");
       continue;
     }
+    case z_OK: {
+      break;
+    }
+    default: {
+      z_error("z_ChannelWait failed %d", ret);
+      continue;
+    }
+    }
 
     for (int64_t i = 0; i < ev_count; ++i) {
-      z_Socket cli_socket = {.FD= events[i].FD};
+      z_Socket cli_socket = {.FD = events[i].FD};
 
       if (z_EventIsEnd(&events[i])) {
         z_debug("z_EventIsEnd");
@@ -88,10 +92,9 @@ void *z_IOProcess(void *ptr) {
       }
 
       z_unique(z_Req) req = {};
-
-      z_Error ret = z_ReqInitFromNet(cli_socket.FD, &req);
+      z_Error ret = z_ReqInitBySocket(&req, &cli_socket);
       if (ret != z_OK) {
-        z_error("z_ReqInitFromNet %d", ret);
+        z_error("z_ReqInitBySocket %d", ret);
         z_ConnectClose(ch, &cli_socket);
         continue;
       }
@@ -102,12 +105,12 @@ void *z_IOProcess(void *ptr) {
         z_debug("handle error %d", ret);
       }
 
-      resp.Ret.Code = ret;
-      resp.Ret.DataLen = resp.Record != nullptr ? z_RecordLen(resp.Record) : 0;
+      resp.Header.Code = ret;
+      resp.Header.Size = resp.Record != nullptr ? z_RecordSize(resp.Record) : 0;
 
-      ret = z_RespToNet(cli_socket.FD, &resp);
+      ret = z_RespToSocket(&resp, &cli_socket);
       if (ret != z_OK) {
-        z_error("z_RespToNet %d", ret);
+        z_error("z_RespToSocket %d", ret);
         z_ConnectClose(ch, &cli_socket);
         continue;
       }
@@ -143,7 +146,13 @@ z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port,
   svr->Attr = attr;
   svr->Handle = handle;
   svr->WorkerCount = worker_count;
+  svr->Socket = (z_Socket) {.FD = z_INVALID_SOCKET};
+  svr->AcceptCh = (z_Channel) {.CH = z_INVALID_CHANNEL};
+  svr->TIDs = (z_ThreadIDs){};
+  svr->Epoch = (z_Epoch){};
+  svr->WorkerChs = (z_Channels){};
   atomic_store(&svr->Status, z_SVR_STATUS_STOP);
+
 
   z_Error ret = z_OK;
   do {
@@ -159,19 +168,19 @@ z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port,
       break;
     }
 
-    z_ThreadIDsInit(&svr->TIDs, worker_count);
+    z_ThreadIDsInit(&svr->TIDs, svr->WorkerCount);
     if (ret != z_OK) {
       z_error("z_ThreadIDsInit %d", ret);
       break;
     }
 
-    ret = z_EpochInit(&svr->Epoch, worker_count, 1024);
+    ret = z_EpochInit(&svr->Epoch, svr->WorkerCount, 1024);
     if (ret != z_OK) {
       z_error("z_EpochInit %d", ret);
       break;
     }
 
-    ret = z_ChannelsInit(&svr->WorkerChs, worker_count);
+    ret = z_ChannelsInit(&svr->WorkerChs, svr->WorkerCount);
     if (ret != z_OK) {
       z_error("z_ChannelsInit %d", ret);
       break;
@@ -218,14 +227,18 @@ z_Error z_SvrRun(z_Svr *svr) {
     z_Event events[z_EVENT_LEN] = {};
     int64_t ev_count = 0;
     ret = z_ChannelWait(&svr->AcceptCh, events, z_EVENT_LEN, &ev_count, 1000);
-    if (ret != z_OK) {
-      z_error("z_ChannelWait %d", ret);
-      continue;
-    }
-
-    if (ev_count == 0) {
+    switch (ret) {
+    case z_ERR_TIMEOUT: {
       z_debug("timeout");
       continue;
+    }
+    case z_OK: {
+      break;
+    }
+    default: {
+      z_error("z_ChannelWait failed %d", ret);
+      continue;
+    }
     }
 
     for (int64_t i = 0; i < ev_count; ++i) {
