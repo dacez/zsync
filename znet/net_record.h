@@ -20,11 +20,6 @@ typedef struct {
   uint64_t reserve : 24;
   uint64_t Size : 32;
 } z_ReqHeader;
-
-typedef struct {
-  z_ReqHeader Header;
-  z_Record *Record;
-} z_Req;
 static_assert(sizeof(z_ReqHeader) == 8);
 
 typedef struct {
@@ -33,6 +28,11 @@ typedef struct {
   uint64_t Size : 32;
 } z_RespHeader;
 static_assert(sizeof(z_RespHeader) == 8);
+
+typedef struct {
+  z_ReqHeader Header;
+  z_Record *Record;
+} z_Req;
 
 typedef struct {
   z_RespHeader Header;
