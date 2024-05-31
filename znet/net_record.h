@@ -10,7 +10,9 @@
 #include "zutils/log.h"
 
 typedef enum : int8_t {
-  z_RT_KV = 1,
+  z_RT_KV_SET = 1,
+  z_RT_KV_GET = 2,
+  z_RT_BINLOG_GET = 3,
 } z_ReqType;
 
 typedef struct {

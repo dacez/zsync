@@ -45,7 +45,7 @@ z_Error z_BenchmarkInsertOne(z_Cli *cli, int64_t i) {
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
-  req.Header.Type = z_RT_KV;
+  req.Header.Type = z_RT_KV_SET;
   req.Header.Size = z_RecordSize(req.Record);
 
   z_Error ret = z_CliCall(cli, &req, &resp);
@@ -75,7 +75,7 @@ z_Error z_BenchmarkFindOne(z_Cli *cli, int64_t i, int64_t ii) {
   if (req.Record == nullptr) {
     return z_ERR_NOSPACE;
   }
-  req.Header.Type = z_RT_KV;
+  req.Header.Type = z_RT_KV_GET;
   req.Header.Size = z_RecordSize(req.Record);
 
   z_Error ret = z_CliCall(cli, &req, &resp);

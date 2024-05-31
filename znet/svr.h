@@ -16,7 +16,7 @@
 #include "zutils/log.h"
 #include "zutils/threads.h"
 
-typedef z_Error z_Handle(void *attr, z_Record *record, z_Record **result);
+typedef z_Error z_Handle(void *attr, const z_Req *req, z_Resp *resp);
 enum : int8_t {
   z_SVR_STATUS_STOP = 0,
   z_SVR_STATUS_RUNNING = 1,
@@ -100,7 +100,7 @@ void *z_IOProcess(void *ptr) {
       }
 
       z_unique(z_Resp) resp = {};
-      ret = svr->Handle(svr->Attr, req.Record, &resp.Record);
+      ret = svr->Handle(svr->Attr, &req, &resp);
       if (ret != z_OK) {
         z_debug("handle error %d", ret);
       }

@@ -26,7 +26,7 @@ z_Error z_InsertTest(z_Cli *cli, int64_t i) {
     return z_ERR_NOSPACE;
   }
   req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV;
+  req.Header.Type = z_RT_KV_SET;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
@@ -55,7 +55,7 @@ z_Error z_DeleteTest(z_Cli *cli, int64_t i) {
     return z_ERR_NOSPACE;
   }
   req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV;
+  req.Header.Type = z_RT_KV_SET;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
@@ -86,7 +86,7 @@ z_Error z_BlindUpdateTest(z_Cli *cli, int64_t i, int64_t ii) {
     return z_ERR_NOSPACE;
   }
   req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV;
+  req.Header.Type = z_RT_KV_SET;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
@@ -120,7 +120,7 @@ z_Error z_UpdateTest(z_Cli *cli, int64_t i, int64_t ii, int64_t src_i) {
     return z_ERR_NOSPACE;
   }
   req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV;
+  req.Header.Type = z_RT_KV_SET;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
@@ -151,7 +151,7 @@ z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
     return z_ERR_NOSPACE;
   }
   req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV;
+  req.Header.Type = z_RT_KV_GET;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {

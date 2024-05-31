@@ -272,6 +272,7 @@ z_Error z_KVFromRecord(z_KV *kv, z_Record *r) {
   z_FileRecord fr = {.Record = r};
   ret = z_BinLogAppendRecord(&kv->BinLog, &fr);
   if (ret != z_OK) {
+    z_debug("z_BinLogAppendRecord %d", ret);
     return ret;
   }
   return z_OK;
