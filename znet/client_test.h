@@ -3,7 +3,7 @@
 
 #include "zerror/error.h"
 #include "znet/client.h"
-#include "znet/net_record.h"
+#include "znet/kv_proto.h"
 #include "zrecord/record.h"
 #include "ztest/test.h"
 #include "zutils/buffer.h"
@@ -21,23 +21,22 @@ z_Error z_InsertTest(z_Cli *cli, int64_t i) {
   z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
   z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
 
-  req.Record = z_RecordNewByKV(z_ROP_INSERT, k, v);
-  if (req.Record == nullptr) {
+  z_Record *r = (void*)z_RecordNewByKV(z_ROP_INSERT, k, v);
+  if (r == nullptr) {
+    z_error("r == nullptr");
     return z_ERR_NOSPACE;
   }
-  req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV_SET;
+  req.Header.Size = z_RecordSize(r);
+  req.Header.Type = z_KV_REQ_TYPE_SET;
+  req.Data = (void*)r;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
+    z_error("z_CliCall failed %d", ret);
     return ret;
   }
 
-  if (resp.Header.Code != z_OK) {
-    return resp.Header.Code;
-  }
-
-  return z_OK;
+  return resp.Header.Code;
 }
 
 z_Error z_DeleteTest(z_Cli *cli, int64_t i) {
@@ -50,23 +49,22 @@ z_Error z_DeleteTest(z_Cli *cli, int64_t i) {
   z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
   z_ConstBuffer v = {};
 
-  req.Record = z_RecordNewByKV(z_ROP_DELETE, k, v);
-  if (req.Record == nullptr) {
+  z_Record *r = z_RecordNewByKV(z_ROP_DELETE, k, v);
+  if (r == nullptr) {
+    z_error("r == nullptr");
     return z_ERR_NOSPACE;
   }
-  req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV_SET;
+  req.Header.Size = z_RecordSize(r);
+  req.Header.Type = z_KV_REQ_TYPE_SET;
+  req.Data = (void*)r;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
+    z_error("z_CliCall failed %d", ret);
     return ret;
   }
 
-  if (resp.Header.Code != z_OK) {
-    return resp.Header.Code;
-  }
-
-  return z_OK;
+  return resp.Header.Code;
 }
 
 z_Error z_BlindUpdateTest(z_Cli *cli, int64_t i, int64_t ii) {
@@ -81,23 +79,22 @@ z_Error z_BlindUpdateTest(z_Cli *cli, int64_t i, int64_t ii) {
   z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
   z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
 
-  req.Record = z_RecordNewByKV(z_ROP_FORCE_UPDATE, k, v);
-  if (req.Record == nullptr) {
+  z_Record *r = z_RecordNewByKV(z_ROP_FORCE_UPDATE, k, v);
+  if (r == nullptr) {
+    z_error("r == nullptr");
     return z_ERR_NOSPACE;
   }
-  req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV_SET;
+  req.Header.Size = z_RecordSize(r);
+  req.Header.Type = z_KV_REQ_TYPE_SET;
+  req.Data = (void*)r;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
+    z_error("z_CliCall failed %d", ret);
     return ret;
   }
 
-  if (resp.Header.Code != z_OK) {
-    return resp.Header.Code;
-  }
-
-  return z_OK;
+  return resp.Header.Code;
 }
 
 z_Error z_UpdateTest(z_Cli *cli, int64_t i, int64_t ii, int64_t src_i) {
@@ -115,23 +112,22 @@ z_Error z_UpdateTest(z_Cli *cli, int64_t i, int64_t ii, int64_t src_i) {
   z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
   z_ConstBuffer src_v = {.Data = src_val, .Size = strlen(src_val)};
 
-  req.Record = z_RecordNewByKVV(z_ROP_UPDATE, k, v, src_v);
-  if (req.Record == nullptr) {
+  z_Record *r = z_RecordNewByKVV(z_ROP_UPDATE, k, v, src_v);
+  if (r == nullptr) {
+    z_error("r == nullptr");
     return z_ERR_NOSPACE;
   }
-  req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV_SET;
+  req.Header.Size = z_RecordSize(r);
+  req.Header.Type = z_KV_REQ_TYPE_SET;
+  req.Data = (void*)r;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
+    z_error("z_CliCall failed %d", ret);
     return ret;
   }
 
-  if (resp.Header.Code != z_OK) {
-    return resp.Header.Code;
-  }
-
-  return z_OK;
+  return resp.Header.Code;
 }
 
 z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
@@ -146,15 +142,18 @@ z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
   z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
   z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
 
-  req.Record = z_RecordNewByKV(z_ROP_FIND, k, z_ConstBufferEmpty());
-  if (req.Record == nullptr) {
+  z_Record *r = z_RecordNewByKV(z_ROP_FIND, k, z_ConstBufferEmpty());
+  if (r == nullptr) {
+    z_error("r == nullptr");
     return z_ERR_NOSPACE;
   }
-  req.Header.Size = z_RecordSize(req.Record);
-  req.Header.Type = z_RT_KV_GET;
+  req.Header.Size = z_RecordSize(r);
+  req.Header.Type = z_KV_REQ_TYPE_GET;
+  req.Data = (void*)r;
 
   z_Error ret = z_CliCall(cli, &req, &resp);
   if (ret != z_OK) {
+    z_error("z_CliCall failed %d", ret);
     return ret;
   }
 
@@ -163,12 +162,14 @@ z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
   }
 
   z_ConstBuffer resp_val;
-  ret = z_RecordValue(resp.Record, &resp_val);
+  ret = z_RecordValue((z_Record*)resp.Data, &resp_val);
   if (ret != z_OK) {
+    z_error("z_RecordValue failed %d", ret);
     return ret;
   }
 
   if (z_BufferIsEqual(&resp_val, &v) == false) {
+    z_error("z_BufferIsEqual");
     return z_ERR_INVALID_DATA;
   }
 

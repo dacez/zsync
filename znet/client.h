@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "zerror/error.h"
-#include "znet/net_record.h"
+#include "znet/kv_proto.h"
 #include "zrecord/record.h"
 #include "zutils/assert.h"
 #include "zutils/buffer.h"
@@ -64,7 +64,7 @@ z_Error z_CliConnect(z_Cli *cli, int64_t i) {
 
 z_Error z_CliCall(z_Cli *cli, const z_Req *req, z_Resp *resp) {
   z_ConstBuffer key;
-  z_Error ret = z_RecordKey(req->Record, &key);
+  z_Error ret = z_RecordKey((z_Record*)req->Data, &key);
   if (ret != z_OK) {
     z_error("z_RecordKey failed %d", ret);
     return ret;

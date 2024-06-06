@@ -27,3 +27,7 @@ z_BenchmarkFind: 11934 ms key_count 1048576
 z_BenchmarkInsert: 8670 ms key_count 1048576
 z_BenchmarkFind: 12184 ms key_count 1048576
 
+======== 2024/06/06 17:32:23 ========
+z_BenchmarkInsert: 7622 ms key_count 1048576
+z_BenchmarkFind: 12043 ms key_count 1048576
+

@@ -4,19 +4,94 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/syslimits.h>
 
 #include "zepoch/epoch.h"
 #include "zerror/error.h"
-#include "znet/net_record.h"
 #include "znet/socket.h"
-#include "zrecord/record.h"
+#include "znet/proto.h"
 #include "zutils/assert.h"
 #include "zutils/channel.h"
 #include "zutils/defer.h"
 #include "zutils/log.h"
+#include "zutils/mem.h"
 #include "zutils/threads.h"
 
 typedef z_Error z_Handle(void *attr, const z_Req *req, z_Resp *resp);
+
+typedef struct {
+  z_Handle **Handles;
+  int64_t HandlesLen;
+} z_Handles;
+
+z_Error z_HandlesInit(z_Handles *hs) {
+  z_assert(hs != nullptr);
+
+  hs->HandlesLen = 0;
+  hs->Handles = nullptr;
+  return z_OK;
+}
+
+void z_HandlesDestroy(z_Handles *hs) {
+  z_assert(hs != nullptr);
+
+  if (hs->Handles != nullptr) {
+    z_free(hs->Handles);
+  }
+
+  hs->HandlesLen = 0;
+}
+
+z_Error z_HandlesAdd(z_Handles *hs, uint8_t type, z_Handle *handle) {
+  z_assert(hs != nullptr);
+
+  if (type >= hs->HandlesLen) {
+    z_Handle**src = hs->Handles;
+    int64_t src_len = hs->HandlesLen;
+    hs->HandlesLen = hs->HandlesLen == 0 ? 1 : hs->HandlesLen * 2;
+    hs->Handles = z_malloc(sizeof(z_Handle*) * hs->HandlesLen);
+    if (hs->Handles == nullptr) {
+      z_error("hs->Handles == nullptr");
+      hs->Handles = src;
+      hs->HandlesLen = src_len;
+      return z_ERR_NOSPACE;
+    }
+    memset(hs->Handles, 0, hs->HandlesLen);
+
+    if (src != nullptr) {
+      memcpy(hs->Handles, src, sizeof(z_Handle*) * src_len);
+      z_free(src);
+    }
+
+    return z_HandlesAdd(hs, type, handle);
+  }
+
+  if (hs->Handles[type] != nullptr) {
+    z_error("hs->Handles[type] != nullptr");
+    return z_ERR_EXIST;
+  }
+
+  hs->Handles[type] = handle;
+  return z_OK;
+}
+
+z_Error z_HandlesRun(z_Handles *hs, void *arg, const z_Req *req, z_Resp *resp) {
+  z_assert(hs != nullptr, arg != nullptr, req != nullptr, resp != nullptr);
+  
+  if (req->Header.Type >= hs->HandlesLen) {
+    z_error("type >= hs->HandlesLen %u", req->Header.Type);
+    return z_ERR_NOT_FOUND;
+  }
+
+  z_Handle *handle = hs->Handles[req->Header.Type];
+  if (handle == nullptr) {
+    z_error("handle == nullptr %u", req->Header.Type);
+    return z_ERR_NOT_FOUND;
+  }
+
+  return handle(arg, req, resp);
+}
+
 enum : int8_t {
   z_SVR_STATUS_STOP = 0,
   z_SVR_STATUS_RUNNING = 1,
@@ -25,8 +100,8 @@ enum : int8_t {
 typedef struct {
   char IP[z_IP_MAX_LEN];
   uint16_t Port;
-  void *Attr;
-  z_Handle *Handle;
+  void *Arg;
+  z_Handles *Handles;
   z_Socket Socket;
   z_Channel AcceptCh;
   int64_t WorkerCount;
@@ -100,14 +175,13 @@ void *z_IOProcess(void *ptr) {
       }
 
       z_unique(z_Resp) resp = {};
-      ret = svr->Handle(svr->Attr, &req, &resp);
+      z_Handle *handle;
+      ret = z_HandlesRun(svr->Handles, svr->Arg, &req, &resp);
       if (ret != z_OK) {
-        z_debug("handle error %d", ret);
+        z_debug("z_HandlesRun error %d", ret);
       }
 
       resp.Header.Code = ret;
-      resp.Header.Size = resp.Record != nullptr ? z_RecordSize(resp.Record) : 0;
-
       ret = z_RespToSocket(&resp, &cli_socket);
       if (ret != z_OK) {
         z_error("z_RespToSocket %d", ret);
@@ -136,15 +210,15 @@ void z_SvrDestroy(z_Svr *svr) {
 }
 
 z_Error z_SvrInit(z_Svr *svr, const char *ip, uint16_t port,
-                  int64_t worker_count, void *attr, z_Handle *handle) {
+                  int64_t worker_count, void *arg, z_Handles *handles) {
   z_assert(svr != nullptr, ip != nullptr, port != 0, worker_count != 0,
-           attr != nullptr, handle != nullptr);
+           arg != nullptr, handles != nullptr);
 
   memset(svr->IP, 0, z_IP_MAX_LEN);
   strncpy(svr->IP, ip, z_IP_MAX_LEN - 1);
   svr->Port = port;
-  svr->Attr = attr;
-  svr->Handle = handle;
+  svr->Arg = arg;
+  svr->Handles = handles;
   svr->WorkerCount = worker_count;
   svr->Socket = (z_Socket) {.FD = z_INVALID_SOCKET};
   svr->AcceptCh = (z_Channel) {.CH = z_INVALID_CHANNEL};

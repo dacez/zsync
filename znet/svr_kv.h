@@ -4,34 +4,39 @@
 
 #include "zerror/error.h"
 #include "zkv/kv.h"
-#include "znet/net_record.h"
+#include "znet/kv_proto.h"
+#include "znet/proto.h"
 #include "znet/svr.h"
 #include "zrecord/record.h"
 #include "zutils/assert.h"
 #include "zutils/buffer.h"
 #include "zutils/log.h"
 
-z_Error z_KVHandle(void *attr, const z_Req *req, z_Resp *resp) {
-  z_assert(attr != nullptr, req != nullptr, resp != nullptr);
+z_Error z_KVHandle(void *arg, const z_Req *req, z_Resp *resp) {
+  z_assert(arg != nullptr, req != nullptr, resp != nullptr);
 
-  if (req->Record == nullptr) {
-    z_error("req->Record == nullptr");
+  if (req->Header.Type != z_KV_REQ_TYPE_SET && req->Header.Type != z_KV_REQ_TYPE_GET){
+    z_error("invalid type %u", req->Header.Type);
+    return z_ERR_INVALID_DATA;
+  }
+
+  if (req->Data == nullptr) {
+    z_error("req->Data == nullptr");
     return z_ERR_INVALID_DATA;
   }
 
   z_Error ret = z_OK;
-  z_KV *kv = (z_KV *)attr;
-  if (req->Header.Type == z_RT_KV_SET) {
-    ret = z_KVFromRecord(kv, req->Record);
+  z_KV *kv = (z_KV *)arg;
+  if (req->Header.Type == z_KV_REQ_TYPE_SET) {
+    ret = z_KVFromRecord(kv, (z_Record*)req->Data);
     if (ret != z_OK) {
       z_debug("z_KVFromRecord %d", ret);
     }
     return ret;
   }
 
-  if (req->Header.Type == z_RT_KV_GET) {
     z_ConstBuffer key = {};
-    z_Error ret = z_RecordKey(req->Record, &key);
+    ret = z_RecordKey((z_Record*)req->Data, &key);
     if (ret != z_OK) {
       z_error("z_RecordKey failed %d", ret);
       return ret;
@@ -46,19 +51,20 @@ z_Error z_KVHandle(void *attr, const z_Req *req, z_Resp *resp) {
 
     z_ConstBuffer empty = {};
     z_ConstBuffer v = {.Data = val.Data, .Size = val.Size};
-    resp->Record = z_RecordNewByKV(0, empty, v);
-    if (resp->Record == nullptr) {
-      z_error("resp->Record == nullptr");
+    z_Record *record = z_RecordNewByKV(0, empty, v);
+    if (record == nullptr) {
+      z_error("record == nullptr");
       return z_ERR_NOSPACE;
     }
+
+    resp->Data = (void *)record;
+    resp->Header.Size = z_RecordSize(record);
     return z_OK;
-  }
-  z_error("type %d", req->Header.Type);
-  return z_ERR_INVALID_DATA;
 }
 
 typedef struct {
   z_KV KV;
+  z_Handles HS;
   z_Svr Svr;
 } z_SvrKV;
 
@@ -71,7 +77,24 @@ z_Error z_SvrKVInit(z_SvrKV *svr, const char *binlog_path,
     return ret;
   }
 
-  ret = z_SvrInit(&svr->Svr, ip, port, thread_count, &svr->KV, z_KVHandle);
+  ret = z_HandlesInit(&svr->HS);
+  if (ret != z_OK) {
+    z_error("z_HandlesInit %d", ret);
+    return ret;
+  }
+
+  ret = z_HandlesAdd(&svr->HS, z_KV_REQ_TYPE_SET, z_KVHandle);
+  if (ret != z_OK) {
+    z_error("z_HandlesAdd %d", ret);
+    return ret;
+  }
+  ret = z_HandlesAdd(&svr->HS, z_KV_REQ_TYPE_GET, z_KVHandle);
+  if (ret != z_OK) {
+    z_error("z_HandlesAdd %d", ret);
+    return ret;
+  }
+
+  ret = z_SvrInit(&svr->Svr, ip, port, thread_count, &svr->KV, &svr->HS);
   if (ret != z_OK) {
     z_error("z_SvrInit %d", ret);
     return ret;
@@ -92,7 +115,8 @@ z_Error z_SvrKVRun(z_SvrKV *svr) {
 void z_SvrKVStop(z_SvrKV *svr) { z_SvrStop(&svr->Svr); }
 
 void z_SvrKVDestroy(z_SvrKV *svr) {
-  z_KVDestroy(&svr->KV);
   z_SvrDestroy(&svr->Svr);
+  z_HandlesDestroy(&svr->HS);
+  z_KVDestroy(&svr->KV);
 }
 #endif
