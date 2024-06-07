@@ -11,4 +11,13 @@ typedef enum : uint8_t {
   z_KV_REQ_TYPE_BINLOG_GET = 3,
 } z_KV_REQ_TYPE;
 
+typedef struct {
+  int64_t MinSeq;
+  int64_t Len;
+} z_BinlogGetReq;
+
+typedef struct {
+  int64_t RecordsLen;
+} z_BinlogGetResp;
+
 #endif

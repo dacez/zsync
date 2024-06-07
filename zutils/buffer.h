@@ -31,6 +31,11 @@ z_Error z_BufferInit(z_Buffer *b, const int8_t *data, int64_t size) {
   return z_OK;
 }
 
+z_Error z_BufferAppend(z_Buffer *b, const int8_t *data, int64_t size) {
+  z_assert(b != nullptr, data != nullptr, size != 0);
+  return z_OK;
+}
+
 z_Error z_BufferInitByConstBuffer(z_Buffer *b, const z_ConstBuffer *cb) {
   z_assert(b != nullptr, cb != nullptr);
   return z_BufferInit(b, cb->Data, cb->Size);
@@ -41,6 +46,7 @@ void z_BufferDestroy(z_Buffer *b) {
   if (b->Data != nullptr) {
     z_free(b->Data);
   }
+  b->Size = 0;
 }
 
 #define z_BufferStr(buffer, cstr)                                              \

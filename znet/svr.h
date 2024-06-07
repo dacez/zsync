@@ -116,12 +116,11 @@ void z_ConnectClose(z_Channel *ch, z_Socket *socket) {
   z_SocketDestroy(socket);
 }
 
-void *z_IOProcess(void *ptr) {
-  if (ptr == nullptr) {
+void *z_IOProcess(z_Svr *svr) {
+  if (svr == nullptr) {
     z_error("ptr == nullptr");
     return nullptr;
   }
-  z_Svr *svr = (z_Svr *)ptr;
   z_ThreadIDInit(&svr->TIDs);
   z_defer(z_ThreadIDDestroy, &svr->TIDs);
 
@@ -273,7 +272,7 @@ z_Error z_SvrRun(z_Svr *svr) {
   atomic_store(&svr->Status, z_SVR_STATUS_RUNNING);
 
   z_unique(z_Threads) ts;
-  z_Error ret = z_ThreadsInit(&ts, svr->WorkerCount, z_IOProcess, svr);
+  z_Error ret = z_ThreadsInit(&ts, svr->WorkerCount, (z_ThreadFunc)z_IOProcess, svr);
   if (ret != z_OK) {
     z_error("z_ThreadsInit %d", ret);
     return ret;
