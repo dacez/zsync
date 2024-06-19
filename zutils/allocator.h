@@ -10,9 +10,10 @@
 #define z_ALLOCATOR_MAX_LEVEL 8
 
 static_assert(z_ALLOCATOR_MAX_LEVEL <= UINT8_MAX);
-static_assert((UINT64_MAX >> z_ALLOCATOR_MAX_LEVEL) >= z_ALLOCATOR_ZERO_LEVEL_SIZE);
+static_assert((UINT64_MAX >> z_ALLOCATOR_MAX_LEVEL) >=
+              z_ALLOCATOR_ZERO_LEVEL_SIZE);
 
-typedef union {
+typedef struct {
   uint64_t Level : 8;
   uint64_t Offset : 56;
 } z_Pos;
@@ -28,7 +29,7 @@ uint64_t z_AllocatorLevelSize(uint8_t level) {
 void *z_AllocatorAlloc(z_Allocator *a, int64_t size) {
   z_assert(a != nullptr);
   if (a->Data[a->Pos.Level] == nullptr) {
-    void* data = z_malloc(z_AllocatorLevelSize(a->Pos.Level));
+    void *data = z_malloc(z_AllocatorLevelSize(a->Pos.Level));
     if (data == nullptr) {
       z_error("z_malloc failed %lld", size);
       return nullptr;
@@ -36,20 +37,19 @@ void *z_AllocatorAlloc(z_Allocator *a, int64_t size) {
     a->Data[a->Pos.Level] = data;
   }
 
-  if (z_AllocatorLevelSize(a->Pos.Level) < a->Pos.Offset + size) {
-    if (a->Pos.Level < UINT8_MAX) {
-      ++a->Pos.Level;
-    } else {
-      z_error("no space %u %llu", a->Pos.Level, a->Pos.Offset);
-      return nullptr;
-    }
+  if (a->Pos.Offset + size <= z_AllocatorLevelSize(a->Pos.Level)) {
+    void *ptr = a->Data[a->Pos.Level] + a->Pos.Offset;
+    a->Pos.Offset += size;
+    return ptr;
+  }
+
+  if (a->Pos.Level + 1 < z_ALLOCATOR_MAX_LEVEL) {
+    a->Pos.Level += 1;
     a->Pos.Offset = 0;
     return z_AllocatorAlloc(a, size);
   }
-
-  void *ptr = a->Data[a->Pos.Level] + a->Pos.Offset;
-  a->Pos.Offset += size;
-  return ptr;
+  z_error("no space %u %llu", a->Pos.Level, a->Pos.Offset);
+  return nullptr;
 }
 
 void z_AllocatorReset(z_Allocator *a) {
@@ -65,16 +65,6 @@ void z_AllocatorDestroy(z_Allocator *a) {
       z_free(a->Data[i]);
     }
   }
-}
-
-thread_local z_Allocator z_thread_local_allocator = {};
-
-void *z_ThreadLocalAlloc(int64_t size) {
-  return z_AllocatorAlloc(&z_thread_local_allocator, size);
-}
-
-void z_ThreadLocalReset() {
-  return z_AllocatorReset(&z_thread_local_allocator);
 }
 
 #endif

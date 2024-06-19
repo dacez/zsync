@@ -11,6 +11,7 @@
 #include "zutils/defer_test.h"
 #include "zutils/macro_test.h"
 #include "znet/kv_svr_cli_test.h"
+#include "zutils/local_test.h"
 
 int main() {
   z_LogInit("", 2);
@@ -18,6 +19,7 @@ int main() {
 
   z_TEST_START();
   
+  z_LocalTest();
   z_MacroTest();
   z_DeferTest();
   z_TimeTest();
