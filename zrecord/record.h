@@ -16,7 +16,6 @@ typedef enum : uint8_t {
   z_ROP_UPDATE = 3,
   z_ROP_FORCE_UPDATE = 4,
   z_ROP_FORCE_UPSERT = 5,
-  z_ROP_FIND = 6,
 } z_RecordOP;
 
 typedef struct {

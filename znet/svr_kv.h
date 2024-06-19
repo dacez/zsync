@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "zbinlog/file.h"
+#include "zbinlog/file_record.h"
 #include "zerror/error.h"
 #include "zkv/kv.h"
 #include "znet/kv_proto.h"
@@ -88,7 +89,16 @@ z_Error z_KVHandleBinLogGet(void *arg, const z_Req *req, z_Resp *resp) {
   int64_t len = binlogGetReq->Len;
   int64_t minSeq = binlogGetReq->MinSeq;
   while (len > 0) {
-    
+    z_FileRecord fr;
+    ret = z_ReaderGetRecord(&rd, &fr);
+    if (ret != z_OK) {
+      z_error("z_ReaderGetRecord %d", ret);
+      break;
+    }
+
+    if (fr.Seq >= minSeq) {
+      --len;
+    }
   }
 
 

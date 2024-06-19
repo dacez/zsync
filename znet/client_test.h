@@ -142,7 +142,7 @@ z_Error z_FindTest(z_Cli *cli, int64_t i, int64_t ii) {
   z_ConstBuffer k = {.Data = key, .Size = strlen(key)};
   z_ConstBuffer v = {.Data = val, .Size = strlen(val)};
 
-  z_Record *r = z_RecordNewByKV(z_ROP_FIND, k, z_ConstBufferEmpty());
+  z_Record *r = z_RecordNewByKV(0, k, (z_ConstBuffer){});
   if (r == nullptr) {
     z_error("r == nullptr");
     return z_ERR_NOSPACE;

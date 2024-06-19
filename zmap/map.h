@@ -90,7 +90,7 @@ z_Error z_ListFind(z_List *l, z_ConstBuffer k, z_MapRecord r, void *attr,
       } else {
         z_debug("i %d hash %llu arg_offset %lld list_offset %lld", i, r.Hash,
                 r.Offset, l->Records[i].Offset);
-        if (isEqual(attr, k, z_ConstBufferEmpty(), l->Records[i].Offset) == true) {
+        if (isEqual(attr, k, (z_ConstBuffer){}, l->Records[i].Offset) == true) {
           *record = &l->Records[i];
           return z_OK;
         }
@@ -199,7 +199,7 @@ z_Error z_ListUpdate(z_List *l, z_ConstBuffer k, z_MapRecord r, z_ConstBuffer sr
     return ret;
   }
 
-  if (isEqual(attr, z_ConstBufferEmpty(), src_v, record->Offset) == false) {
+  if (isEqual(attr, (z_ConstBuffer){}, src_v, record->Offset) == false) {
     return z_ERR_CONFLICT;
   }
 
@@ -219,7 +219,7 @@ z_Error z_ListDelete(z_List *l, z_ConstBuffer k, uint64_t hash, void *attr,
   int16_t ii = 0;
   for (int16_t i = 0; i < l->Pos; ++i) {
     if (l->Records[i].Hash != hash ||
-        isEqual(attr, k, z_ConstBufferEmpty(), l->Records[i].Offset) != true) {
+        isEqual(attr, k, (z_ConstBuffer){}, l->Records[i].Offset) != true) {
       l->Records[ii] = l->Records[i];
       ++ii;
     }

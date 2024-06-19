@@ -10,12 +10,25 @@
 
 typedef struct {
   const void *Data;
+  union {
   int64_t Size;
+  int64_t Pos;
+  };
 } z_ConstBuffer;
+
+bool z_ConstBufferIsEmpty(const z_ConstBuffer *b) {
+  z_assert(b->Size != 0 && b->Data != nullptr ||
+           b->Size == 0 && b->Data == nullptr);
+  if (b->Size == 0) {
+    return true;
+  }
+  return false;
+}
 
 typedef struct {
   void *Data;
   int64_t Size;
+  int64_t Pos;
 } z_Buffer;
 
 z_Error z_BufferInit(z_Buffer *b, const int8_t *data, int64_t size) {
@@ -26,6 +39,7 @@ z_Error z_BufferInit(z_Buffer *b, const int8_t *data, int64_t size) {
     return z_ERR_NOSPACE;
   }
   b->Size = size;
+  b->Pos = size;
 
   memcpy(b->Data, data, size);
   return z_OK;
@@ -52,38 +66,23 @@ void z_BufferDestroy(z_Buffer *b) {
 #define z_BufferStr(buffer, cstr)                                              \
   memset(cstr, 0, sizeof(cstr));                                               \
   memcpy(cstr, buffer.Data,                                                    \
-         buffer.Size < sizeof(cstr) - 1 ? buffer.Size : sizeof(cstr) - 1);
+         buffer.Pos < sizeof(cstr) - 1 ? buffer.Pos : sizeof(cstr) - 1);
 
 #define z_BufferIsEqual(a, b)                                                  \
   ({                                                                           \
     bool ret = false;                                                          \
     do {                                                                       \
-      if ((a)->Size != (b)->Size) {                                              \
+      if ((a)->Pos != (b)->Pos) {                                              \
         ret = false;                                                           \
         break;                                                                 \
       }                                                                        \
-      if ((a)->Size == 0) {                                                     \
+      if ((a)->Pos == 0) {                                                     \
         ret = true;                                                            \
         break;                                                                 \
       }                                                                        \
-      ret = memcmp((a)->Data, (b)->Data, (a)->Size) == 0;                       \
+      ret = memcmp((a)->Data, (b)->Data, (a)->Pos) == 0;                       \
     } while (0);                                                               \
     ret;                                                                       \
   })
-
-z_ConstBuffer z_ConstBufferEmpty() {
-  z_ConstBuffer buffer = {.Data = nullptr, .Size = 0};
-  return buffer;
-}
-
-bool z_ConstBufferIsEmpty(const z_ConstBuffer *b) {
-  z_assert(b->Size != 0 && b->Data != nullptr ||
-           b->Size == 0 && b->Data == nullptr);
-  if (b->Size == 0) {
-    return true;
-  }
-
-  return false;
-}
 
 #endif
